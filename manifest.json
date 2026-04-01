@@ -1,0 +1,33 @@
+{
+  "name": "Quotes — Quote Management",
+  "short_name": "Quotes",
+  "description": "Offline-first quote management system with PDF export",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1A73E8",
+  "theme_color": "#1A73E8",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "New Quote",
+      "short_name": "New Quote",
+      "description": "Create a new quote",
+      "url": "./index.html#quotes"
+    }
+  ]
+}
