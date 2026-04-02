@@ -1026,15 +1026,17 @@ function buildPreview(qid) {
     : `<div class="qv-logo-img" style="background:${co?.logoColor||accentColor}">${co?.logoText||'A'}</div>`;
 
   // Build items rows
+  // fmtN = number only (no currency prefix) for table cells — prefix is in the header
+  const fmtN = n => Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
   const rows = (q.items||[]).map((li,i) => {
     const lt = li.unitPrice*(li.qty||1)*(1-(li.discount||0));
     return `<tr>
       <td>${i+1}.</td>
       <td><div class="qv-tbl-desc">${li.desc||li.itemId}</div></td>
       <td>${li.qty||1}</td>
-      <td>${fmt(li.unitPrice)}</td>
+      <td>${fmtN(li.unitPrice)}</td>
       <td>${li.discount?'−'+Math.round(li.discount*100)+'%':'—'}</td>
-      <td>${fmt(lt)}</td>
+      <td>${fmtN(lt)}</td>
     </tr>`;
   }).join('');
 
@@ -1042,7 +1044,7 @@ function buildPreview(qid) {
   const pmHTML = (co?.paymentMethods||[]).map(pm => {
     if (pm.type==='Bank') return `
       <div class="qv-pay-block">
-        <div class="qv-pay-type" style="color:${accentColor}">🏦 Bank Transfer</div>
+        <div class="qv-pay-type" style="color:${accentColor}">BANK TRANSFER</div>
         ${pm.bankName?`<div class="qv-pay-row">Bank: <b>${pm.bankName}</b></div>`:''}
         ${pm.branch?`<div class="qv-pay-row">Branch: <b>${pm.branch}</b></div>`:''}
         ${pm.accName?`<div class="qv-pay-row">Account: <b>${pm.accName}</b></div>`:''}
@@ -1051,7 +1053,7 @@ function buildPreview(qid) {
       </div>`;
     if (pm.type==='M-Pesa') return `
       <div class="qv-pay-block">
-        <div class="qv-pay-type" style="color:#4CAF50">📱 M-Pesa</div>
+        <div class="qv-pay-type" style="color:#4CAF50">M-PESA</div>
         ${pm.paybillBusiness?`<div class="qv-pay-row">Paybill: <b>${pm.paybillBusiness}</b></div>`:''}
         ${pm.paybillAccount?`<div class="qv-pay-row">Account: <b>${pm.paybillAccount}</b></div>`:''}
         ${pm.tillNumber?`<div class="qv-pay-row">Till No: <b>${pm.tillNumber}</b></div>`:''}
@@ -1141,9 +1143,9 @@ function buildPreview(qid) {
           <th style="width:24px">Item #</th>
           <th>Item Description</th>
           <th style="width:48px;text-align:center">Qty.</th>
-          <th style="width:90px;text-align:right">Rate</th>
+          <th style="width:100px;text-align:right">Rate (${sym()})</th>
           <th style="width:54px;text-align:right">Disc</th>
-          <th style="width:95px;text-align:right">Amount</th>
+          <th style="width:105px;text-align:right">Amount (${sym()})</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -1185,17 +1187,79 @@ function buildPreview(qid) {
     <!-- SIGNATURE -->
     <div class="qv-sig-area">
       <div class="qv-sig-block">
-        <div class="qv-sig-line"></div>
+        ${sp?.signatureImg
+          ? `<div style="height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px">
+               <img src="${sp.signatureImg}" style="max-height:56px;max-width:180px;object-fit:contain" alt="signature">
+             </div>
+             <div style="border-bottom:1.5px solid #BBB;margin-bottom:5px"></div>`
+          : `<div class="qv-sig-line"></div>`}
         <div class="qv-sig-lbl">Authorized Signature</div>
         <div class="qv-sig-name">${sp?.name||co?.name||''}</div>
       </div>
     </div>`;
 
-  // Scale to fit screen (fix #2)
-  setTimeout(scalePreview, 60);
+  // Also populate #prev-doc (hidden) for html2canvas PDF capture
+  const hiddenDoc = document.getElementById('prev-doc');
+  if (hiddenDoc) {
+    hiddenDoc.style.setProperty('--qAccent', accentColor);
+    hiddenDoc.style.fontFamily = "var(--doc-font)";
+    hiddenDoc.innerHTML = docEl.innerHTML;
+  }
+
+  // Paginate the preview into A4 sheets
+  setTimeout(() => { paginatePreview(); scalePreview(); }, 80);
 }
 
-// Fix #2 — scale A4 doc to fit preview container
+// Split the rendered preview into A4-height pages for display
+function paginatePreview() {
+  const src  = document.getElementById('prev-doc');
+  const dest = document.getElementById('prev-pages');
+  if (!src || !dest) return;
+
+  const A4_H = 1074; // px at 96dpi = 297mm
+  const totalH = src.scrollHeight;
+
+  if (totalH <= A4_H * 1.1) {
+    // Single page — just show it directly
+    dest.innerHTML = '';
+    const page = document.createElement('div');
+    page.className = 'prev-page';
+    page.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
+    page.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
+    page.innerHTML = src.innerHTML;
+    dest.appendChild(page);
+  } else {
+    // Multi-page: use CSS columns trick — render in a scrollable A4-width div
+    // and use overflow clipping per page
+    dest.innerHTML = '';
+    const numPages = Math.ceil(totalH / A4_H);
+    for (let p = 0; p < numPages; p++) {
+      const page = document.createElement('div');
+      page.className = 'prev-page';
+      page.style.cssText = [
+        'overflow:hidden',
+        'position:relative',
+        `height:${A4_H}px`,
+        'min-height:unset',
+      ].join(';');
+      // Inner scroller clipped to show only this page's content
+      const inner = document.createElement('div');
+      inner.style.cssText = [
+        'position:absolute',
+        'top:' + (-p * A4_H) + 'px',
+        'left:0', 'right:0',
+        'width:760px',
+      ].join(';');
+      inner.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
+      inner.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
+      inner.innerHTML = src.innerHTML;
+      page.appendChild(inner);
+      dest.appendChild(page);
+    }
+  }
+}
+
+// scalePreview — fits the 760px-wide preview into the available screen width
 function scalePreview() {
   const wrap  = document.getElementById('prev-wrap'); if (!wrap) return;
   const outer = document.getElementById('prev-outer');
@@ -1203,11 +1267,15 @@ function scalePreview() {
   const scale = Math.min(avail / 760, 1);
   wrap.style.transform       = `scale(${scale})`;
   wrap.style.transformOrigin = 'top center';
-  const doc = document.getElementById('prev-doc');
-  if (doc) {
-    // Shrink the outer so the page flows naturally below the scaled doc
-    const scaledH = doc.scrollHeight * scale;
-    wrap.style.marginBottom = (scaledH - doc.scrollHeight) + 'px';
+
+  // Adjust the wrapper height so the scroll container knows the true scaled height
+  const pages = document.getElementById('prev-pages');
+  const content = pages || document.getElementById('prev-doc');
+  if (content) {
+    const scaledH = content.scrollHeight * scale;
+    // Negative margin-bottom compensates for the transform not affecting layout
+    wrap.style.marginBottom = (scaledH - content.scrollHeight) + 'px';
+    wrap.style.display      = 'block';
   }
 }
 window.addEventListener('resize', scalePreview);
@@ -2059,7 +2127,34 @@ function openSpEd(id) {
       <select class="fi" id="sp-coid">
         ${DB.companies.map(co=>`<option value="${co.id}"${co.id===(sp?.companyId||DB.settings.activeCompanyId)?' selected':''}>${co.name}</option>`).join('')}
       </select></div>
-    ${id?`<div style="margin-top:14px"><button class="btn bd2 btn-w"
+    <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+    <div class="fg">
+      <label class="fl">Digital Signature</label>
+      <div style="background:var(--su2);border-radius:8px;padding:12px;border:1.5px dashed var(--ol)">
+        <div id="sp-sig-preview" style="min-height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:10px">
+          ${sp?.signatureImg
+            ? `<img src="${sp.signatureImg}" style="max-height:70px;max-width:240px;object-fit:contain;border-radius:4px">`
+            : `<div style="color:var(--t3);font-size:13px;text-align:center">
+                 <span class="material-icons-round" style="font-size:32px;display:block;margin-bottom:4px">draw</span>
+                 No signature uploaded
+               </div>`}
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="btn bo btn-sm" onclick="document.getElementById('sp-sig-file').click()">
+            <span class="material-icons-round">upload</span> Upload Signature
+          </button>
+          ${sp?.signatureImg?`<button class="btn bt btn-sm" style="color:var(--E)" onclick="clearSpSig()">
+            <span class="material-icons-round">delete</span> Remove
+          </button>`:''}
+        </div>
+        <input type="file" id="sp-sig-file" accept="image/*" style="display:none" onchange="previewSpSig(this)">
+        <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:8px">
+          Upload a photo of your handwritten signature (PNG/JPG, transparent background works best)
+        </div>
+      </div>
+      <input type="hidden" id="sp-sig-img" value="${sp?.signatureImg||''}">
+    </div>
+    ${id?`<div style="margin-top:4px"><button class="btn bd2 btn-w"
       onclick="confirmAct('Remove this salesperson?',()=>delItem('sp','${id}'))">
       <span class="material-icons-round">delete</span> Remove</button></div>`:''}`;
   openDlg('dlg-spe');
@@ -2068,10 +2163,33 @@ function openSpEd(id) {
 function saveSp() {
   const id=v('sp-id'), name=v('sp-nm');
   if (!id||!name) { snack('ID and name required'); return; }
-  const sp = {id, name, title:v('sp-ttl2'), email:v('sp-em'), phone:v('sp-ph'), companyId:v('sp-coid')};
+  const sigImg = document.getElementById('sp-sig-img')?.value || '';
+  const sp = {id, name, title:v('sp-ttl2'), email:v('sp-em'), phone:v('sp-ph'),
+    companyId:v('sp-coid'), signatureImg: sigImg};
   const idx = DB.salespeople.findIndex(s=>s.id===id);
   if (idx>=0) DB.salespeople[idx]=sp; else DB.salespeople.push(sp);
   save(); closeDlg('dlg-spe'); renderSPList(); renderSettings(); snack('Salesperson saved');
+}
+
+// Signature image preview handler
+function previewSpSig(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('sp-sig-img').value = e.target.result;
+    document.getElementById('sp-sig-preview').innerHTML =
+      `<img src="${e.target.result}" style="max-height:70px;max-width:240px;object-fit:contain;border-radius:4px">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSpSig() {
+  document.getElementById('sp-sig-img').value = '';
+  document.getElementById('sp-sig-preview').innerHTML =
+    `<div style="color:var(--t3);font-size:13px;text-align:center">
+       <span class="material-icons-round" style="font-size:32px;display:block;margin-bottom:4px">draw</span>
+       No signature uploaded
+     </div>`;
 }
 
 // ── THEME ──────────────────────────────────────────────
