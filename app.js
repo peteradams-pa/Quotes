@@ -1210,75 +1210,96 @@ function buildPreview(qid) {
   setTimeout(() => { paginatePreview(); scalePreview(); }, 80);
 }
 
-// Split the rendered preview into A4-height pages for display
-function paginatePreview() {
+// renderPreviewPage — scale-to-fit: always produces exactly one A4 page.
+// The content is scaled down inside the A4 frame so nothing is ever cut.
+// This means: 5 items or 50 items → always one clean page.
+function renderPreviewPage() {
   const src  = document.getElementById('prev-doc');
   const dest = document.getElementById('prev-pages');
   if (!src || !dest) return;
 
-  const A4_H = 1074; // px at 96dpi = 297mm
-  const totalH = src.scrollHeight;
+  const A4_W = 760;   // px — fixed A4 width
+  const A4_H = 1074;  // px at 96dpi ≈ 297mm
 
-  if (totalH <= A4_H * 1.1) {
-    // Single page — just show it directly
-    dest.innerHTML = '';
-    const page = document.createElement('div');
-    page.className = 'prev-page';
-    page.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
-    page.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
-    page.innerHTML = src.innerHTML;
-    dest.appendChild(page);
-  } else {
-    // Multi-page: use CSS columns trick — render in a scrollable A4-width div
-    // and use overflow clipping per page
-    dest.innerHTML = '';
-    const numPages = Math.ceil(totalH / A4_H);
-    for (let p = 0; p < numPages; p++) {
-      const page = document.createElement('div');
-      page.className = 'prev-page';
-      page.style.cssText = [
-        'overflow:hidden',
-        'position:relative',
-        `height:${A4_H}px`,
-        'min-height:unset',
-      ].join(';');
-      // Inner scroller clipped to show only this page's content
-      const inner = document.createElement('div');
-      inner.style.cssText = [
-        'position:absolute',
-        'top:' + (-p * A4_H) + 'px',
-        'left:0', 'right:0',
-        'width:760px',
-      ].join(';');
-      inner.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
-      inner.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
-      inner.innerHTML = src.innerHTML;
-      page.appendChild(inner);
-      dest.appendChild(page);
-    }
-  }
+  // Measure the natural content height at full scale
+  // src is hidden (display:none), so we must measure the rendered clone
+  const measure = src.cloneNode(true);
+  measure.style.cssText = [
+    'position:fixed', 'visibility:hidden', 'pointer-events:none',
+    'top:-99999px', 'left:-99999px',
+    `width:${A4_W}px`, 'transform:none',
+    'display:block',
+  ].join(';');
+  document.body.appendChild(measure);
+  const naturalH = measure.scrollHeight;
+  document.body.removeChild(measure);
+
+  // Calculate content scale: shrink if taller than A4, never enlarge
+  const contentScale = naturalH > A4_H ? A4_H / naturalH : 1;
+
+  dest.innerHTML = '';
+  const page = document.createElement('div');
+  // A4 frame — fixed size, clips overflow
+  page.style.cssText = [
+    `width:${A4_W}px`,
+    `height:${A4_H}px`,
+    'background:#fff',
+    'position:relative',
+    'overflow:hidden',
+    'box-shadow:0 2px 12px rgba(0,0,0,.2)',
+    'box-sizing:border-box',
+  ].join(';');
+
+  // Content wrapper — scaled down to fit inside the A4 frame
+  const inner = document.createElement('div');
+  inner.style.cssText = [
+    `width:${A4_W}px`,
+    'transform-origin:top left',
+    `transform:scale(${contentScale})`,
+    // When scaled down, the element still occupies its natural height in layout
+    // We compensate with a negative margin-bottom so the page frame clips cleanly
+    `height:${naturalH}px`,
+    'overflow:visible',
+  ].join(';');
+  // Copy accent and font
+  inner.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
+  inner.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
+  inner.innerHTML = src.innerHTML;
+
+  page.appendChild(inner);
+  dest.appendChild(page);
+
+  // Store the content scale so generatePDFBlob can use the same scale
+  dest.dataset.contentScale = String(contentScale);
+
+  // Now fit the A4 frame to the screen width
+  scalePreview();
 }
 
-// scalePreview — fits the 760px-wide preview into the available screen width
+// scalePreview — fits the 760px A4 frame to the screen width
 function scalePreview() {
   const wrap  = document.getElementById('prev-wrap'); if (!wrap) return;
   const outer = document.getElementById('prev-outer');
   const avail = outer ? outer.clientWidth - 24 : window.innerWidth - 24;
-  const scale = Math.min(avail / 760, 1);
-  wrap.style.transform       = `scale(${scale})`;
-  wrap.style.transformOrigin = 'top center';
+  const screenScale = Math.min(avail / 760, 1);
 
-  // Adjust the wrapper height so the scroll container knows the true scaled height
-  const pages = document.getElementById('prev-pages');
-  const content = pages || document.getElementById('prev-doc');
-  if (content) {
-    const scaledH = content.scrollHeight * scale;
-    // Negative margin-bottom compensates for the transform not affecting layout
-    wrap.style.marginBottom = (scaledH - content.scrollHeight) + 'px';
-    wrap.style.display      = 'block';
+  wrap.style.transform       = `scale(${screenScale})`;
+  wrap.style.transformOrigin = 'top center';
+  wrap.style.display         = 'block';
+
+  // Compensate layout height: the transform doesn't affect document flow
+  const dest = document.getElementById('prev-pages');
+  if (dest && dest.firstChild) {
+    const A4_H = 1074;
+    // Actual rendered height = A4_H (the page frame is fixed at A4_H)
+    const scaledH = A4_H * screenScale;
+    wrap.style.marginBottom = (scaledH - A4_H) + 'px';
   }
 }
 window.addEventListener('resize', scalePreview);
+
+// Kept as alias so old call sites still work
+function paginatePreview() { renderPreviewPage(); }
 
 // ── PDF EXPORT — html2canvas renders the exact preview HTML into PDF ──
 function buildFileName(q) {
@@ -1451,19 +1472,45 @@ async function generatePDFBlob() {
   // Instead we clone the element, render it off-screen at full 760px width.
   const FONT_STACK = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
-  // Create invisible off-screen clone at full resolution
+  // Calculate the same content scale used in the preview
+  // so the PDF matches the preview exactly
+  const A4_W_PX = 760, A4_H_PX = 1074;
+  const measureEl = docEl.cloneNode(true);
+  measureEl.style.cssText = [
+    'position:fixed','visibility:hidden','pointer-events:none',
+    'top:-99999px','left:-99999px',`width:${A4_W_PX}px`,'transform:none','display:block',
+  ].join(';');
+  document.body.appendChild(measureEl);
+  const naturalH = measureEl.scrollHeight;
+  document.body.removeChild(measureEl);
+  const contentScale = naturalH > A4_H_PX ? A4_H_PX / naturalH : 1;
+
+  // Build an off-screen element that matches the preview exactly:
+  // A4 frame (760×1074) containing the content scaled to fit
+  const frame = document.createElement('div');
+  frame.style.cssText = [
+    'position:fixed','top:-99999px','left:-99999px',
+    `width:${A4_W_PX}px`, `height:${A4_H_PX}px`,
+    'overflow:hidden','background:#fff','pointer-events:none',
+  ].join(';');
+
   const clone = docEl.cloneNode(true);
   clone.style.cssText = [
-    'position:fixed', 'top:-99999px', 'left:-99999px',
-    'width:760px', 'transform:none', 'pointer-events:none',
-    'z-index:-1', 'font-family:'+FONT_STACK,
+    `width:${A4_W_PX}px`,
+    'transform-origin:top left',
+    `transform:scale(${contentScale})`,
+    `height:${naturalH}px`,
+    'overflow:visible',
+    'font-family:'+FONT_STACK,
     'letter-spacing:-0.01em', 'word-spacing:0.01em',
   ].join(';');
-  document.body.appendChild(clone);
+  clone.style.setProperty('--qAccent', docEl.style.getPropertyValue('--qAccent'));
+  frame.appendChild(clone);
+  document.body.appendChild(frame);
 
   let canvas;
   try {
-    canvas = await html2canvas(clone, {
+    canvas = await html2canvas(frame, {
       scale: 2.5,           // Higher = crisper text
       useCORS: true,
       allowTaint: true,
@@ -1492,21 +1539,20 @@ async function generatePDFBlob() {
       }
     });
   } finally {
-    if (clone && clone.parentNode) clone.parentNode.removeChild(clone);
+    if (frame && frame.parentNode) frame.parentNode.removeChild(frame);
   }
 
   const { jsPDF } = window.jspdf;
-  const pdf   = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
-  const pageW = 210, pageH = 297;
+  const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
 
-  // PNG preserves text sharpness better than JPEG
+  // The canvas is always exactly the A4 frame (760×1074px at contentScale)
+  // Map it to full A4 page — one page, perfectly fitted, no overflow
   const imgData = canvas.toDataURL('image/png');
-  const imgH    = (canvas.height * pageW) / canvas.width;
+  pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, '', 'FAST');
 
-  if (imgH <= pageH) {
-    pdf.addImage(imgData, 'PNG', 0, 0, pageW, imgH, '', 'FAST');
-  } else {
-    const canvasPageH = Math.floor(canvas.width * (pageH / pageW));
+  // Legacy multi-page fallback — kept but never reached with scale-to-fit
+  if (false) {
+    const canvasPageH = Math.floor(canvas.width * (297 / 210));
     let srcY = 0, first = true;
     while (srcY < canvas.height) {
       if (!first) pdf.addPage();
