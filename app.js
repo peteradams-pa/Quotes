@@ -38,13 +38,75 @@ const ACCENTS = [
   {name:'Cyan',         lc:'#0097A7', dc:'#80DEEA'},
 ];
 
-// ── STORAGE ────────────────────────────────────────────
-function save() { try { localStorage.setItem('qpwa3', JSON.stringify(DB)); } catch(e){} }
+// ── STORAGE — IndexedDB (no size limit, handles 500+ products) ──────
+// Falls back to localStorage if IndexedDB unavailable
+const IDB_NAME = 'QuotesPWA';
+const IDB_STORE = 'data';
+const IDB_KEY   = 'db';
+let   _idb      = null;   // cached IDB connection
+
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    if (_idb) { resolve(_idb); return; }
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// save() — async write to IndexedDB, with localStorage mirror for resilience
+function save() {
+  const json = JSON.stringify(DB);
+  // Always try localStorage as a quick backup (may fail silently if >5MB)
+  try { localStorage.setItem('qpwa3', json); } catch(e) {}
+  // Primary: IndexedDB (no size limit)
+  openIDB().then(db => {
+    const tx  = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(json, IDB_KEY);
+  }).catch(e => console.warn('IDB save failed:', e));
+}
+
+// load() — returns a Promise; reads IndexedDB first, then localStorage fallback
 function load() {
+  return new Promise(resolve => {
+    openIDB()
+      .then(db => {
+        const tx  = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+        req.onsuccess = e => {
+          const raw = e.target.result;
+          if (raw) {
+            try { DB = JSON.parse(raw); resolve(); return; } catch(err) {}
+          }
+          // IDB empty — try localStorage migration
+          loadFromLocalStorage(resolve);
+        };
+        req.onerror = () => loadFromLocalStorage(resolve);
+      })
+      .catch(() => loadFromLocalStorage(resolve));
+  });
+}
+
+function loadFromLocalStorage(resolve) {
   try {
     const r = localStorage.getItem('qpwa3');
-    if (r) DB = JSON.parse(r); else seed();
-  } catch(e) { seed(); }
+    if (r) {
+      DB = JSON.parse(r);
+      // Migrate: write to IDB so future loads use IDB
+      openIDB().then(db => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(r, IDB_KEY);
+      }).catch(()=>{});
+    } else {
+      seed();
+    }
+  } catch(e) {
+    seed();
+  }
+  resolve();
 }
 
 // ── SEED DATA ──────────────────────────────────────────
@@ -2087,11 +2149,14 @@ function confirmAct(msg, fn) {
 
 // ── DATA EXPORT / IMPORT ───────────────────────────────
 function exportData() {
-  const b = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(b);
+  const json = JSON.stringify(DB, null, 2);
+  const kb   = Math.round(json.length / 1024);
+  const b    = new Blob([json], {type:'application/json'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(b);
   a.download = 'quotes-backup-'+new Date().toISOString().slice(0,10)+'.json';
-  a.click(); snack('Data exported');
+  a.click();
+  snack(`Exported ${DB.inventory.length} products, ${DB.quotes.length} quotes (${kb} KB)`);
 }
 function importData() {
   const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
@@ -2155,12 +2220,20 @@ function snack(msg, actLbl='', actFn=null) {
 }
 
 // ── BOOT ───────────────────────────────────────────────
-load();
-applyTheme();
-// Set initial FAB state before go() call
-document.getElementById('fab-lbl').textContent = 'New Quote';
-document.getElementById('fab').classList.remove('gone');
-go('dashboard');
+// load() is async (IndexedDB), so we wait before rendering
+load().then(() => {
+  applyTheme();
+  document.getElementById('fab-lbl').textContent = 'New Quote';
+  document.getElementById('fab').classList.remove('gone');
+  go('dashboard');
+}).catch(() => {
+  // Absolute fallback
+  seed();
+  applyTheme();
+  document.getElementById('fab-lbl').textContent = 'New Quote';
+  document.getElementById('fab').classList.remove('gone');
+  go('dashboard');
+});
 
 // Service Worker
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
