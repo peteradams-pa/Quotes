@@ -610,21 +610,26 @@ function renderQE0(body) {
     </div>
     <div class="fr">
       <div class="fg"><label class="fl">Status</label>
-        <select class="fi" id="qe-status">
-          ${['Draft','Sent','Won','Lost','Expired'].map(s=>`<option${s===qeD.status?' selected':''}>${s}</option>`).join('')}
-        </select></div>
+        ${buildCustomSelect({
+        id:'qe-status', label:'Status',
+        options:['Draft','Sent','Won','Lost','Expired'].map(s=>({value:s,label:s})),
+        value:qeD.status
+      })}</div>
       <div class="fg"><label class="fl">Version</label>
         <input class="fi" id="qe-ver" value="${qeD.version||'v1'}"></div>
     </div>
     <div class="fg"><label class="fl">Sales Person</label>
-      <select class="fi" id="qe-sp">
-        <option value="">— None —</option>
-        ${sps.map(s=>`<option value="${s.id}"${s.id===qeD.salespersonId?' selected':''}>${s.name} — ${s.title||''}</option>`).join('')}
-      </select></div>
+      ${buildCustomSelect({
+        id:'qe-sp', label:'Sales Person', placeholder:'— None —',
+        options:[{value:'',label:'— None —'},...sps.map(s=>({value:s.id,label:s.name,sub:s.title||''}))],
+        value:qeD.salespersonId||'', searchable:sps.length>4
+      })}</div>
     <div class="fg"><label class="fl">Company Profile</label>
-      <select class="fi" id="qe-co">
-        ${cos.map(c=>`<option value="${c.id}"${c.id===qeD.companyId?' selected':''}>${c.name}</option>`).join('')}
-      </select></div>
+      ${buildCustomSelect({
+        id:'qe-co', label:'Company Profile',
+        options:cos.map(c=>({value:c.id,label:c.name})),
+        value:qeD.companyId
+      })}</div>
     <div class="fr">
       <div class="fg"><label class="fl">Overall Discount %</label>
         <input class="fi" type="number" id="qe-disc" value="${Math.round((qeD.discount||0)*100)}" min="0" max="100"></div>
@@ -645,16 +650,23 @@ function renderQE1(body) {
   const custs = acoCusts();
   body.innerHTML = `
     <div class="fg"><label class="fl">Select Customer *</label>
-      <select class="fi" id="qe-cust" onchange="previewCust()">
-        <option value="">— Select a customer —</option>
-        ${custs.map(c=>`<option value="${c.id}"${c.id===qeD.customerId?' selected':''}>${c.company} — ${c.contact}</option>`).join('')}
-      </select></div>
+      ${buildCustomSelect({
+        id:'qe-cust', label:'Customer', placeholder:'— Select a customer —',
+        options:[{value:'',label:'— Select a customer —'},...custs.map(c=>({value:c.id,label:c.company,sub:c.contact+' · '+(c.phone||'')}))],
+        value:qeD.customerId||'', searchable:true
+      })}
+</div>
     <div id="qe-cust-prev"></div>
     <div style="text-align:center;padding:10px 0;color:var(--t2);font-size:13px">— or —</div>
     <button class="btn bo btn-w" onclick="openCustEd(null,true)">
       <span class="material-icons-round">person_add</span> Create New Customer
     </button>`;
   previewCust();
+  // Wire previewCust to hidden select change event (custom select fires this)
+  setTimeout(() => {
+    const sel = document.getElementById('qe-cust');
+    if (sel) sel.addEventListener('change', previewCust);
+  }, 50);
 }
 
 function previewCust() {
@@ -1276,25 +1288,28 @@ function renderPreviewPage() {
   scalePreview();
 }
 
-// scalePreview — fits the 760px A4 frame to the screen width
+// scalePreview — fits the 760px A4 frame to the screen width without overflow
 function scalePreview() {
   const wrap  = document.getElementById('prev-wrap'); if (!wrap) return;
   const outer = document.getElementById('prev-outer');
-  const avail = outer ? outer.clientWidth - 24 : window.innerWidth - 24;
-  const screenScale = Math.min(avail / 760, 1);
+  const A4_W  = 760;
+  const A4_H  = 1074;
+  const outerW = outer ? outer.clientWidth : window.innerWidth;
+  const avail  = Math.max(outerW - 0, 100);       // use full container width
+  const screenScale = Math.min(avail / A4_W, 1);  // never enlarge
 
-  wrap.style.transform       = `scale(${screenScale})`;
-  wrap.style.transformOrigin = 'top center';
+  // Use transform-origin top-left, then shift right by half the remaining space
+  // This centres the scaled element without overflow
+  const offset = (avail - A4_W * screenScale) / 2;
+  wrap.style.transform       = `translateX(${offset}px) scale(${screenScale})`;
+  wrap.style.transformOrigin = 'top left';
   wrap.style.display         = 'block';
+  wrap.style.width           = A4_W + 'px';        // natural width stays 760
+  wrap.style.marginLeft      = '0';
 
-  // Compensate layout height: the transform doesn't affect document flow
-  const dest = document.getElementById('prev-pages');
-  if (dest && dest.firstChild) {
-    const A4_H = 1074;
-    // Actual rendered height = A4_H (the page frame is fixed at A4_H)
-    const scaledH = A4_H * screenScale;
-    wrap.style.marginBottom = (scaledH - A4_H) + 'px';
-  }
+  // Height compensation: transform doesn't affect layout height
+  const scaledH = A4_H * screenScale;
+  wrap.style.marginBottom = (scaledH - A4_H) + 'px';
 }
 window.addEventListener('resize', scalePreview);
 
@@ -1669,9 +1684,11 @@ function openInvEd(id) {
     <div class="fg"><label class="fl">Description</label>
       <textarea class="fi" id="ii-desc">${p?.description||''}</textarea></div>
     <div class="fg"><label class="fl">Category</label>
-      <select class="fi" id="ii-cat">
-        ${getCategories().map(c=>`<option${c===(p?.category||getCategories()[0])?' selected':''}>${c}</option>`).join('')}
-      </select></div>
+      ${buildCustomSelect({
+        id:'ii-cat', label:'Category',
+        options:getCategories().map(c=>({value:c,label:c})),
+        value:p?.category||getCategories()[0]
+      })}</div>
     <div class="fr">
       <div class="fg"><label class="fl">Unit Cost *</label>
         <input class="fi" type="number" id="ii-cost" value="${p?.unitCost||0}" step="0.01"></div>
@@ -1750,16 +1767,20 @@ function openCustEd(id, fromQE=false) {
       <div class="fg"><label class="fl">Industry</label>
         <input class="fi" id="ci-ind" value="${c?.industry||''}" placeholder="e.g. Technology"></div>
       <div class="fg"><label class="fl">Tier</label>
-        <select class="fi" id="ci-tier">
-          ${['Gold','Platinum','Silver','Bronze'].map(t=>`<option${t===(c?.tier||'Bronze')?' selected':''}>${t}</option>`).join('')}
-        </select></div>
+        ${buildCustomSelect({
+        id:'ci-tier', label:'Tier',
+        options:['Gold','Platinum','Silver','Bronze'].map(t=>({value:t,label:t})),
+        value:c?.tier||'Bronze'
+      })}</div>
     </div>
     <div class="fg"><label class="fl">Tax PIN / Reg No.</label>
       <input class="fi" id="ci-pin" value="${c?.taxPin||''}" placeholder="P051234567A"></div>
     <div class="fg"><label class="fl">Company Profile</label>
-      <select class="fi" id="ci-coid">
-        ${DB.companies.map(co=>`<option value="${co.id}"${co.id===(c?.companyId||DB.settings.activeCompanyId)?' selected':''}>${co.name}</option>`).join('')}
-      </select></div>
+      ${buildCustomSelect({
+        id:'ci-coid', label:'Company Profile',
+        options:DB.companies.map(co=>({value:co.id,label:co.name})),
+        value:c?.companyId||DB.settings.activeCompanyId
+      })}</div>
     <input type="hidden" id="ci-fromqe" value="${fromQE?1:0}">
     ${id?`<div style="margin-top:14px"><button class="btn bd2 btn-w"
       onclick="confirmAct('Delete this customer?',()=>delItem('cust','${id}'))">
@@ -1833,6 +1854,7 @@ function openCoEd(id) {
   document.getElementById('co-ttl').textContent = id ? 'Edit Profile' : 'New Company';
   document.getElementById('co-body').innerHTML = buildCoForm(co);
   openDlg('dlg-co');
+  setTimeout(wirePMSelects, 100);
 }
 
 function buildCoForm(co) {
@@ -1897,9 +1919,11 @@ function buildCoForm(co) {
 
   <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
   <div class="fg"><label class="fl">Default Payment Terms</label>
-    <select class="fi" id="co-pterms">
-      ${['Net 7','Net 14','Net 30','Net 60','Due on Receipt','50% Upfront','COD'].map(t=>`<option value="${t}"${t===(co?.paymentTerms||'Net 30')?' selected':''}>${t}</option>`).join('')}
-    </select></div>
+    ${buildCustomSelect({
+      id:'co-pterms', label:'Payment Terms',
+      options:['Net 7','Net 14','Net 30','Net 60','Due on Receipt','50% Upfront','COD'].map(t=>({value:t,label:t})),
+      value:co?.paymentTerms||'Net 30'
+    })}</div>
 
   <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
   <div class="st" style="padding:0 0 8px">Terms &amp; Conditions</div>
@@ -1918,10 +1942,13 @@ function pmCardHTML(pm, i) {
   return `<div class="pmcard" id="pm-${i}">
     <div class="pmhead">
       <span class="pm-badge" id="pm-badge-${i}">${pm.type}</span>
-      <select class="fi" style="flex:1;font-size:13px" id="pm-type-${i}"
-        onchange="pmTypeChange(${i},this.value)">
-        ${types.map(t=>`<option value="${t}"${t===pm.type?' selected':''}>${t}</option>`).join('')}
-      </select>
+      <div style="flex:1">
+        ${buildCustomSelect({
+          id:'pm-type-'+i, label:'Payment Type',
+          options:types.map(t=>({value:t,label:t})),
+          value:pm.type
+        })}
+      </div>
       <button class="ib" style="width:30px;height:30px;color:var(--E)" onclick="removePM(${i})">
         <span class="material-icons-round" style="font-size:18px">delete</span>
       </button>
@@ -1929,6 +1956,9 @@ function pmCardHTML(pm, i) {
     <div id="pm-fields-${i}">${pmFieldsHTML(pm,i)}</div>
   </div>`;
 }
+
+// Wire pmTypeChange from custom select — called via hidden select change event
+// pmTypeChange listens to the hidden select's change event via onchange in pmCardHTML calls
 
 function pmFieldsHTML(pm, i) {
   if (pm.type==='Bank') return `
@@ -1959,12 +1989,24 @@ function pmTypeChange(i, type) {
   document.getElementById('pm-badge-'+i).textContent = type;
   document.getElementById('pm-fields-'+i).innerHTML = pmFieldsHTML({type},i);
 }
+
+// Wire pm-type custom selects after company editor renders
+// Called from saveCo and buildCoForm render
+function wirePMSelects() {
+  document.querySelectorAll('[id^="pm-type-"]').forEach(sel => {
+    sel.addEventListener('change', function() {
+      const idx = this.id.replace('pm-type-','');
+      pmTypeChange(idx, this.value);
+    });
+  });
+}
 function addPayMethod() {
   const list = document.getElementById('pm-list');
   const idx  = list.querySelectorAll('.pmcard').length;
   const div  = document.createElement('div');
   div.innerHTML = pmCardHTML({type:'Bank'}, idx);
   list.appendChild(div.firstElementChild);
+  setTimeout(wirePMSelects, 50);
 }
 function removePM(i) { document.getElementById('pm-'+i)?.remove(); }
 
@@ -2170,9 +2212,11 @@ function openSpEd(id) {
         <input class="fi" type="tel" id="sp-ph" value="${sp?.phone||''}" placeholder="+254 7xx xxx xxx"></div>
     </div>
     <div class="fg"><label class="fl">Company Profile</label>
-      <select class="fi" id="sp-coid">
-        ${DB.companies.map(co=>`<option value="${co.id}"${co.id===(sp?.companyId||DB.settings.activeCompanyId)?' selected':''}>${co.name}</option>`).join('')}
-      </select></div>
+      ${buildCustomSelect({
+        id:'sp-coid', label:'Company Profile',
+        options:DB.companies.map(co=>({value:co.id,label:co.name})),
+        value:sp?.companyId||DB.settings.activeCompanyId
+      })}</div>
     <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
     <div class="fg">
       <label class="fl">Digital Signature</label>
@@ -2381,6 +2425,120 @@ function snack(msg, actLbl='', actFn=null) {
   el.classList.add('show');
   clearTimeout(_st);
   _st = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ══════════════════════════════════════════════════════
+// CUSTOM SELECT ENGINE — replaces native Android/iOS selects
+// Usage: cusSelect(id, title, options, currentValue, onChange, {searchable})
+// options = [{value, label, sub?}]
+// ══════════════════════════════════════════════════════
+let _csCallback = null;
+let _csOptions  = [];
+let _csAllOpts  = [];
+
+function cusSelect(targetId, title, options, currentValue, onChange, opts={}) {
+  _csCallback = onChange;
+  _csOptions  = options;
+  _csAllOpts  = options;
+
+  const sheet = document.getElementById('cs-sheet');
+  const list  = document.getElementById('cs-list');
+  const srch  = document.getElementById('cs-search');
+  const srchWrap = document.getElementById('cs-search-wrap');
+  document.getElementById('cs-title').textContent = title;
+
+  // Search bar only for large lists
+  const searchable = opts.searchable || options.length > 6;
+  srchWrap.style.display = searchable ? '' : 'none';
+  srch.value = '';
+
+  csRenderOpts(options, currentValue);
+  sheet.classList.add('open');
+  if (searchable) setTimeout(() => srch.focus(), 200);
+}
+
+function csRenderOpts(options, selectedVal) {
+  const list = document.getElementById('cs-list');
+  const curVal = selectedVal !== undefined ? selectedVal
+    : _csAllOpts.find(o => o.selected)?.value;
+  list.innerHTML = options.map(o => `
+    <div class="cs-opt${o.value===curVal?' selected':''}"
+         onclick="csSelect('${(o.value+'').replace(/'/g,"\\'")}')">
+      <div class="cs-opt-check">
+        ${o.value===curVal?'<span class="material-icons-round" style="font-size:16px">check</span>':''}
+      </div>
+      <div class="cs-opt-label">
+        <div>${o.label}</div>
+        ${o.sub?`<div class="cs-opt-sub">${o.sub}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function csFilter(q) {
+  const filtered = q.trim()
+    ? _csAllOpts.filter(o =>
+        o.label.toLowerCase().includes(q.toLowerCase()) ||
+        (o.sub||'').toLowerCase().includes(q.toLowerCase()))
+    : _csAllOpts;
+  csRenderOpts(filtered, undefined);
+}
+
+function csSelect(val) {
+  if (_csCallback) _csCallback(val);
+  csClose();
+}
+
+function csClose() {
+  document.getElementById('cs-sheet').classList.remove('open');
+  _csCallback = null;
+}
+
+// ── Helper: build custom select display element ──
+// Call this wherever you'd normally write <select class="fi" ...>
+// It creates a styled div that opens the custom sheet on click.
+// The actual <select> is hidden but kept for form value reading.
+function buildCustomSelect({id, label, options, value, onChange, searchable, placeholder}) {
+  const selOpt = options.find(o => o.value === value) || options.find(o => o.value == value);
+  const displayText = selOpt ? selOpt.label : (placeholder || '— Select —');
+  const isPlaceholder = !selOpt;
+  return `
+    <div class="cs-wrap">
+      <div class="cs-display" tabindex="0"
+           onclick="csOpenFor('${id}','${(label||'').replace(/'/g,"\\'")}',${JSON.stringify(options).replace(/"/g,'&quot;')},'${value||''}',${searchable?'true':'false'})"
+           onkeydown="if(event.key==='Enter'||event.key===' '){this.click()}">
+        <span class="cs-display-text${isPlaceholder?' placeholder':''}">${displayText}</span>
+        <span class="material-icons-round cs-arrow">expand_more</span>
+      </div>
+      <select id="${id}" style="display:none">
+        ${options.map(o=>`<option value="${o.value}"${o.value===value?' selected':''}>${o.label}</option>`).join('')}
+      </select>
+    </div>`;
+}
+
+function csOpenFor(id, title, options, currentValue, searchable) {
+  // Decode options (they were JSON stringified into attribute)
+  let opts = options;
+  if (typeof opts === 'string') {
+    try { opts = JSON.parse(opts); } catch { return; }
+  }
+  cusSelect(id, title, opts, currentValue, (val) => {
+    // Update hidden select value
+    const sel = document.getElementById(id);
+    if (sel) {
+      sel.value = val;
+      sel.dispatchEvent(new Event('change', {bubbles:true}));
+    }
+    // Re-render the display
+    const wrap = sel ? sel.closest('.cs-wrap') : null;
+    if (wrap) {
+      const opt = opts.find(o => o.value == val || o.value === val);
+      const display = wrap.querySelector('.cs-display-text');
+      if (display) {
+        display.textContent = opt ? opt.label : val;
+        display.classList.remove('placeholder');
+      }
+    }
+  }, {searchable});
 }
 
 // ── BOOT ───────────────────────────────────────────────

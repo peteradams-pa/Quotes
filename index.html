@@ -151,9 +151,78 @@ html,body{height:100%;font-family:var(--doc-font);font-size:14px;
 .fi:focus{outline:none;border-color:var(--P);box-shadow:0 0 0 3px var(--rip)}
 .fi::placeholder{color:var(--t3)}
 .fi[readonly]{background:var(--su3);color:var(--t2)}
-select.fi{cursor:pointer;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235F6368' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+/* Hide native select completely — we use custom-select wrapper instead */
+select.fi{
+  /* Keep for fallback but visually hidden behind wrapper */
+  cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:none;
+  padding-right:38px;
+}
+
+/* ══ CUSTOM SELECT WRAPPER ══ */
+.cs-wrap{position:relative;display:block}
+.cs-display{
+  width:100%;padding:10px 38px 10px 13px;
+  border:1.5px solid var(--ol);border-radius:8px;
+  background:var(--su);color:var(--t1);font-size:14px;font-family:inherit;
+  cursor:pointer;display:flex;align-items:center;
+  transition:border-color .15s,box-shadow .15s;
+  user-select:none;min-height:43px;
+}
+.cs-display:focus,.cs-display.open{
+  border-color:var(--P);box-shadow:0 0 0 3px var(--rip);outline:none;
+}
+.cs-display-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-display-text.placeholder{color:var(--t3)}
+.cs-arrow{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  pointer-events:none;color:var(--t2);font-size:20px;
+  transition:transform .2s;
+}
+.cs-arrow.open{transform:translateY(-50%) rotate(180deg)}
+
+/* Custom select bottom sheet */
+#cs-sheet{
+  position:fixed;inset:0;z-index:500;display:none;
+  background:rgba(0,0,0,.5);animation:bfi .18s;
+}
+#cs-sheet.open{display:flex;align-items:flex-end;justify-content:center}
+#cs-inner{
+  background:var(--su);width:100%;max-width:600px;
+  border-radius:16px 16px 0 0;
+  max-height:70dvh;display:flex;flex-direction:column;
+  animation:shup .25s cubic-bezier(.2,0,0,1);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+#cs-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 10px;border-bottom:1px solid var(--ol2);flex-shrink:0;
+}
+#cs-title{font-size:15px;font-weight:700;color:var(--t1)}
+#cs-search-wrap{padding:10px 16px 6px;flex-shrink:0}
+#cs-search{
+  width:100%;padding:9px 13px;border:1.5px solid var(--ol);border-radius:8px;
+  background:var(--su2);color:var(--t1);font-size:14px;font-family:inherit;
+}
+#cs-search:focus{outline:none;border-color:var(--P);box-shadow:0 0 0 3px var(--rip)}
+#cs-list{overflow-y:auto;flex:1}
+.cs-opt{
+  display:flex;align-items:center;padding:13px 16px;
+  border-bottom:1px solid var(--ol2);cursor:pointer;gap:12px;
+  transition:background .1s;font-size:14px;color:var(--t1);
+}
+.cs-opt:last-child{border-bottom:none}
+.cs-opt:active{background:var(--su3)}
+.cs-opt.selected{color:var(--P);font-weight:600}
+.cs-opt-check{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:14px;
+}
+.cs-opt.selected .cs-opt-check{background:var(--P);color:#fff}
+.cs-opt:not(.selected) .cs-opt-check{border:1.5px solid var(--ol)}
+.cs-opt-label{flex:1}
+.cs-opt-sub{font-size:12px;color:var(--t2);margin-top:1px}
 textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
 .fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
@@ -365,16 +434,18 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
    PRINT / PREVIEW — matches sample invoice
 ══════════════════════════════════════ */
 .prev-outer{
-  background:#D8D8D8;padding:20px 12px 40px;min-height:100%;
+  background:#D8D8D8;padding:20px 0 40px;min-height:100%;
   display:flex;flex-direction:column;align-items:center;
+  overflow-x:hidden;  /* prevent horizontal scroll */
   gap:0;
 }
 [data-theme=dark] .prev-outer{background:#181818}
 
-/* Scale wrapper — JS applies transform, origin top-center */
+/* Scale wrapper — JS applies transform + explicit width so no overflow */
 #prev-wrap{
-  transform-origin:top center;
-  width:760px;
+  transform-origin:top left;  /* left-origin + margin:auto = centred after JS */
+  width:760px;                /* JS overrides this with scaled width */
+  flex-shrink:0;
 }
 
 /* Container that holds multiple A4 pages */
@@ -977,6 +1048,20 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
       <div style="font-size:13px;color:var(--t2)" id="share-progress-msg">Generating PDF…</div>
     </div>
     <div class="sp-s"></div>
+  </div>
+</div>
+
+<!-- Custom Select Sheet -->
+<div id="cs-sheet" onclick="csClose()">
+  <div id="cs-inner" onclick="event.stopPropagation()">
+    <div id="cs-header">
+      <span id="cs-title">Select</span>
+      <button class="ib" onclick="csClose()"><span class="material-icons-round">close</span></button>
+    </div>
+    <div id="cs-search-wrap" style="display:none">
+      <input id="cs-search" placeholder="Search…" autocomplete="off" oninput="csFilter(this.value)">
+    </div>
+    <div id="cs-list"></div>
   </div>
 </div>
 
