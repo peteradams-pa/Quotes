@@ -434,52 +434,63 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
    PRINT / PREVIEW — matches sample invoice
 ══════════════════════════════════════ */
 .prev-outer{
-  background:#D8D8D8;padding:20px 0 40px;min-height:100%;
-  display:flex;flex-direction:column;align-items:center;
-  overflow-x:hidden;  /* prevent horizontal scroll */
-  gap:0;
+  background:#D8D8D8;
+  min-height:100%;
+  /* Simple vertical flex — centering handled by padding on the scale-box */
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:20px 0 40px;
+  overflow:hidden;
 }
 [data-theme=dark] .prev-outer{background:#181818}
 
-/* Scale wrapper — JS applies transform + explicit width so no overflow */
-#prev-wrap{
-  transform-origin:top left;  /* left-origin + margin:auto = centred after JS */
-  width:760px;                /* JS overrides this with scaled width */
+/* The scale-box is a container whose width = scaled A4 width (set by JS).
+   It acts as the visible "page holder". No transforms on it. */
+#prev-scale-box{
+  /* JS sets width = 760 * screenScale, height = 1074 * screenScale */
+  position:relative;
   flex-shrink:0;
 }
 
-/* Container that holds multiple A4 pages */
-#prev-pages{
-  display:flex;
-  flex-direction:column;
-  gap:16px; /* gap between pages */
-}
-
-/* Each A4 page — fixed height 1074px = 297mm at 96dpi */
-/* .prev-page is built entirely by JS (renderPreviewPage) — no padding here */
-.prev-page{
+/* The actual 760px A4 page — scaled via transform-origin top-left inside scale-box */
+#prev-wrap{
   width:760px;
-  height:1074px;
-  background:#fff;
-  position:relative;
-  overflow:hidden;
-  box-shadow:0 2px 12px rgba(0,0,0,.2);
-  box-sizing:border-box;
+  transform-origin:top left;
+  /* JS sets: transform: scale(screenScale) */
+  position:absolute;
+  top:0;
+  left:0;
 }
 
-/* Legacy single-doc wrapper kept for html2canvas capture */
+/* Hidden capture element for html2canvas */
 #prev-doc{
   width:760px;
   background:#fff;color:#111;
   font-family:var(--doc-font);
   letter-spacing:-0.01em;
   word-spacing:0.01em;
-  font-feature-settings:"kern" 1,"liga" 1;
   -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
   padding:36px 40px 44px;
-  box-shadow:0 2px 12px rgba(0,0,0,.2);
-  position:relative;overflow:hidden;
+  position:absolute;
+  top:-99999px;
+  left:-99999px;
+  display:block;
+}
+
+/* The A4 page frame — always 760×1074px, clips content */
+#prev-pages{
+  width:760px;
+  position:relative;
+}
+.prev-page{
+  width:760px;
+  height:1074px;
+  background:#fff;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 2px 16px rgba(0,0,0,.25);
+  box-sizing:border-box;
 }
 
 /* ─── HEADER AREA ─── */
@@ -1001,7 +1012,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
     </div>
     <div style="flex:1;overflow-y:auto" id="prev-scroll">
       <div class="prev-outer" id="prev-outer">
-        <div id="prev-wrap"><div id="prev-pages"></div><div id="prev-doc" style="display:none"></div></div>
+        <div id="prev-scale-box"><div id="prev-wrap"><div id="prev-pages"></div></div></div><div id="prev-doc"></div>
       </div>
     </div>
   </div>

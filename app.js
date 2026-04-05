@@ -1222,98 +1222,96 @@ function buildPreview(qid) {
   setTimeout(() => { paginatePreview(); scalePreview(); }, 80);
 }
 
-// renderPreviewPage — scale-to-fit: always produces exactly one A4 page.
-// The content is scaled down inside the A4 frame so nothing is ever cut.
-// This means: 5 items or 50 items → always one clean page.
+// renderPreviewPage — scale-to-fit one A4 page.
+// Strategy: measure natural content height → compute content scale →
+// render scaled content inside a fixed 760×1074 A4 frame →
+// then scale that frame to fit the screen (no JS positioning tricks).
 function renderPreviewPage() {
   const src  = document.getElementById('prev-doc');
   const dest = document.getElementById('prev-pages');
   if (!src || !dest) return;
 
-  const A4_W = 760;   // px — fixed A4 width
-  const A4_H = 1074;  // px at 96dpi ≈ 297mm
+  const A4_W = 760;    // fixed A4 width in px
+  const A4_H = 1074;   // 297mm at 96dpi
 
-  // Measure the natural content height at full scale
-  // src is hidden (display:none), so we must measure the rendered clone
+  // ── Step 1: measure natural content height off-screen ──
   const measure = src.cloneNode(true);
-  measure.style.cssText = [
-    'position:fixed', 'visibility:hidden', 'pointer-events:none',
-    'top:-99999px', 'left:-99999px',
-    `width:${A4_W}px`, 'transform:none',
-    'display:block',
-  ].join(';');
+  Object.assign(measure.style, {
+    position:'fixed', visibility:'hidden', pointerEvents:'none',
+    top:'-99999px', left:'-99999px',
+    width:A4_W+'px', transform:'none', display:'block',
+    height:'auto', maxHeight:'none',
+  });
   document.body.appendChild(measure);
   const naturalH = measure.scrollHeight;
   document.body.removeChild(measure);
 
-  // Calculate content scale: shrink if taller than A4, never enlarge
-  const contentScale = naturalH > A4_H ? A4_H / naturalH : 1;
+  // ── Step 2: content scale — shrink to fit A4 height, never enlarge ──
+  const contentScale = naturalH > A4_H ? (A4_H / naturalH) : 1;
 
+  // ── Step 3: build the A4 page frame ──
   dest.innerHTML = '';
   const page = document.createElement('div');
-  // A4 frame — fixed size, clips overflow
-  page.style.cssText = [
-    `width:${A4_W}px`,
-    `height:${A4_H}px`,
-    'background:#fff',
-    'position:relative',
-    'overflow:hidden',
-    'box-shadow:0 2px 12px rgba(0,0,0,.2)',
-    'box-sizing:border-box',
-  ].join(';');
+  page.className = 'prev-page'; // 760×1074, overflow:hidden — from CSS
 
-  // Content wrapper — scaled down to fit inside the A4 frame
+  // Inner content div: scaled to fit inside the A4 frame
   const inner = document.createElement('div');
-  inner.style.cssText = [
-    `width:${A4_W}px`,
-    'transform-origin:top left',
-    `transform:scale(${contentScale})`,
-    // When scaled down, the element still occupies its natural height in layout
-    // We compensate with a negative margin-bottom so the page frame clips cleanly
-    `height:${naturalH}px`,
-    'overflow:visible',
-  ].join(';');
-  // Copy accent and font
+  Object.assign(inner.style, {
+    width:         A4_W + 'px',
+    height:        naturalH + 'px',
+    transformOrigin: 'top left',
+    transform:     `scale(${contentScale})`,
+    overflow:      'visible',
+    position:      'absolute',
+    top:           '0',
+    left:          '0',
+  });
   inner.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
   inner.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
   inner.innerHTML = src.innerHTML;
 
   page.appendChild(inner);
   dest.appendChild(page);
-
-  // Store the content scale so generatePDFBlob can use the same scale
   dest.dataset.contentScale = String(contentScale);
 
-  // Now fit the A4 frame to the screen width
+  // ── Step 4: scale the A4 frame to fit screen ──
   scalePreview();
 }
 
-// scalePreview — fits the 760px A4 frame to the screen width without overflow
+// scalePreview: fits the 760px A4 frame into the screen.
+// Uses a scale-box (set to scaled dimensions) containing prev-wrap (760px, transformed).
+// No translateX, no margin tricks — the scale-box IS the right size so flexbox centres it.
 function scalePreview() {
-  const wrap  = document.getElementById('prev-wrap'); if (!wrap) return;
-  const outer = document.getElementById('prev-outer');
-  const A4_W  = 760;
-  const A4_H  = 1074;
-  const outerW = outer ? outer.clientWidth : window.innerWidth;
-  const avail  = Math.max(outerW - 0, 100);       // use full container width
-  const screenScale = Math.min(avail / A4_W, 1);  // never enlarge
+  const wrap     = document.getElementById('prev-wrap');
+  const scaleBox = document.getElementById('prev-scale-box');
+  const outer    = document.getElementById('prev-outer');
+  if (!wrap || !scaleBox) return;
 
-  // Use transform-origin top-left, then shift right by half the remaining space
-  // This centres the scaled element without overflow
-  const offset = (avail - A4_W * screenScale) / 2;
-  wrap.style.transform       = `translateX(${offset}px) scale(${screenScale})`;
+  const A4_W = 760;
+  const A4_H = 1074;
+
+  // Available width = outer container width, with a little padding
+  const outerW      = outer ? outer.clientWidth : window.innerWidth;
+  const avail       = Math.max(outerW - 16, 60);
+  const screenScale = Math.min(avail / A4_W, 1); // never enlarge
+
+  // Apply scale to #prev-wrap (transform only, origin top-left)
+  wrap.style.transform       = `scale(${screenScale})`;
   wrap.style.transformOrigin = 'top left';
-  wrap.style.display         = 'block';
-  wrap.style.width           = A4_W + 'px';        // natural width stays 760
-  wrap.style.marginLeft      = '0';
 
-  // Height compensation: transform doesn't affect layout height
-  const scaledH = A4_H * screenScale;
-  wrap.style.marginBottom = (scaledH - A4_H) + 'px';
+  // Set the scale-box to the VISUAL dimensions after scaling
+  // This tells the flexbox layout exactly how much space the page takes
+  // so it can be perfectly centred with no overflow
+  scaleBox.style.width    = Math.round(A4_W * screenScale) + 'px';
+  scaleBox.style.height   = Math.round(A4_H * screenScale) + 'px';
+  scaleBox.style.position = 'relative';
+  scaleBox.style.flexShrink = '0';
+  scaleBox.style.overflow  = 'hidden';
 }
+
 window.addEventListener('resize', scalePreview);
 
-// Kept as alias so old call sites still work
+// Alias — old call sites use paginatePreview()
 function paginatePreview() { renderPreviewPage(); }
 
 // ── PDF EXPORT — html2canvas renders the exact preview HTML into PDF ──
