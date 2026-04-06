@@ -1210,75 +1210,102 @@ function buildPreview(qid) {
       </div>
     </div>`;
 
-  // Also populate #prev-doc (hidden) for html2canvas PDF capture
-  const hiddenDoc = document.getElementById('prev-doc');
-  if (hiddenDoc) {
-    hiddenDoc.style.setProperty('--qAccent', accentColor);
-    hiddenDoc.style.fontFamily = "var(--doc-font)";
-    hiddenDoc.innerHTML = docEl.innerHTML;
-  }
+  // Store the rendered HTML and accent for use by renderPreviewPage + generatePDFBlob
+  window._previewHTML    = docEl.innerHTML;
+  window._previewAccent  = accentColor;
+  window._previewFont    = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
-  // Paginate the preview into A4 sheets
-  setTimeout(() => { paginatePreview(); scalePreview(); }, 80);
+  // Render the preview page (measure, scale-to-fit, display)
+  setTimeout(() => renderPreviewPage(), 60);
 }
 
-// renderPreviewPage — measures content, applies content-scale, then screen-scale.
-// Always produces exactly one A4 page in both preview and PDF.
+// renderPreviewPage — the definitive scale-to-fit preview renderer.
+//
+// How it works:
+//   1. Insert the quote HTML into a VISIBLE off-screen div to get a real scrollHeight
+//   2. Calculate contentScale = A4_H / naturalH  (shrinks tall content to fit)
+//   3. Put scaled content inside a fixed 760×1074 A4 frame in #prev-pages
+//   4. Scale the whole frame to fit the screen width (screenScale)
+//   5. Set #prev-wrap to the visual size so flexbox centres it with no overflow
+//
 function renderPreviewPage() {
-  const src  = document.getElementById('prev-doc');   // off-screen content source
-  const dest = document.getElementById('prev-pages'); // visible page container
-  if (!src || !dest) return;
+  const html   = window._previewHTML;
+  const accent = window._previewAccent || '#1A73E8';
+  const font   = window._previewFont   || "var(--doc-font)";
+  const dest   = document.getElementById('prev-pages');
+  if (!html || !dest) return;
 
-  const A4_W = 760;   // A4 width in px at 96dpi
-  const A4_H = 1074;  // A4 height in px at 96dpi (297mm)
+  const A4_W = 760;
+  const A4_H = 1074;
+  const FONT_STACK = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
-  // Step 1: measure how tall the content is naturally at full 760px width
-  // prev-doc is position:fixed off-screen — just read scrollHeight
-  const naturalH = src.scrollHeight || A4_H;
+  // ── Step 1: measure natural height using a VISIBLE temp element ──
+  // Must be visible for scrollHeight to work reliably across all browsers
+  const probe = document.createElement('div');
+  probe.style.cssText = [
+    'position:fixed',
+    'top:0', 'left:0',           // on-screen so browser renders it
+    'width:760px',
+    'opacity:0',                 // invisible to user
+    'pointer-events:none',
+    'z-index:-999',
+    'background:#fff',
+    'padding:36px 40px 44px',
+    'box-sizing:border-box',
+    'font-family:' + FONT_STACK,
+    'letter-spacing:-0.01em',
+    'word-spacing:0.01em',
+  ].join(';');
+  probe.style.setProperty('--qAccent', accent);
+  probe.innerHTML = html;
+  document.body.appendChild(probe);
 
-  // Step 2: content scale — shrink content to fit inside A4 height
-  const contentScale = naturalH > A4_H ? (A4_H / naturalH) : 1;
+  // Force layout
+  void probe.offsetHeight;
+  const naturalH = probe.scrollHeight;
+  document.body.removeChild(probe);
 
-  // Step 3: build a single A4 page with scaled content inside
+  // ── Step 2: content scale ──
+  const contentScale = (naturalH > A4_H) ? (A4_H / naturalH) : 1;
+
+  // ── Step 3: build A4 page ──
   dest.innerHTML = '';
   const page = document.createElement('div');
-  page.className = 'prev-page'; // CSS: 760×1074, overflow:hidden
+  page.className = 'prev-page'; // CSS: 760px wide, 1074px tall, overflow:hidden
 
-  // The inner div holds the quote HTML, scaled to fit the A4 frame
   const inner = document.createElement('div');
-  Object.assign(inner.style, {
-    width:           A4_W + 'px',
-    height:          naturalH + 'px',
-    transformOrigin: 'top left',
-    transform:       `scale(${contentScale})`,
-    overflow:        'visible',
-    position:        'absolute',
-    top:             '0',
-    left:            '0',
-  });
-  inner.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
-  inner.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
-  inner.innerHTML = src.innerHTML;
+  inner.style.cssText = [
+    'width:760px',
+    'height:' + naturalH + 'px',
+    'transform-origin:top left',
+    'transform:scale(' + contentScale + ')',
+    'overflow:visible',
+    'position:absolute',
+    'top:0', 'left:0',
+    'background:#fff',
+    'padding:36px 40px 44px',
+    'box-sizing:border-box',
+    'font-family:' + FONT_STACK,
+    'letter-spacing:-0.01em',
+    'word-spacing:0.01em',
+    '-webkit-font-smoothing:antialiased',
+  ].join(';');
+  inner.style.setProperty('--qAccent', accent);
+  inner.innerHTML = html;
 
   page.appendChild(inner);
   dest.appendChild(page);
+
+  // Store for generatePDFBlob
+  dest.dataset.naturalH     = String(naturalH);
   dest.dataset.contentScale = String(contentScale);
 
-  // Step 4: fit the A4 frame to the screen
+  // ── Step 4: fit to screen ──
   scalePreview();
 }
 
-// scalePreview: sets prev-wrap to the visual (post-scale) dimensions so
-// the flex parent can centre it perfectly. No translateX, no positioning hacks.
-//
-// Structure after this runs:
-//   #prev-outer (flex column, align-items:center)
-//     └─ #prev-wrap  width=760*s, height=1074*s, overflow:hidden
-//           └─ #prev-pages  760px, transform:scale(s), origin:top left
-//                └─ .prev-page  760×1074
-//
-// Because #prev-wrap IS the visual size, flexbox centres it correctly.
-// Because #prev-pages is 760px but INSIDE the clipped #prev-wrap, no overflow.
+// scalePreview: sizes #prev-wrap to the visual (scaled) A4 dimensions
+// so the flex parent centres it without overflow. Simple and reliable.
 function scalePreview() {
   const wrap  = document.getElementById('prev-wrap');
   const pages = document.getElementById('prev-pages');
@@ -1287,26 +1314,24 @@ function scalePreview() {
 
   const A4_W = 760;
   const A4_H = 1074;
-
   const outerW      = outer ? outer.clientWidth : window.innerWidth;
-  const avail       = Math.max(outerW - 16, 60);
-  const screenScale = Math.min(avail / A4_W, 1); // never enlarge beyond 1
+  const screenScale = Math.min((outerW - 16) / A4_W, 1);
 
-  // Scale the content (prev-pages is 760px, transform shrinks it)
-  pages.style.transform       = `scale(${screenScale})`;
+  // Scale #prev-pages (760px wide) down to fit screen
+  pages.style.transform       = 'scale(' + screenScale + ')';
   pages.style.transformOrigin = 'top left';
 
-  // Set prev-wrap to the visual size so flexbox centres it
-  const vW = Math.round(A4_W * screenScale);
-  const vH = Math.round(A4_H * screenScale);
-  wrap.style.width    = vW + 'px';
-  wrap.style.height   = vH + 'px';
+  // #prev-wrap = the visual bounding box after scaling
+  // flexbox will centre this correctly
+  wrap.style.width    = Math.round(A4_W * screenScale) + 'px';
+  wrap.style.height   = Math.round(A4_H * screenScale) + 'px';
   wrap.style.overflow = 'hidden';
 }
 
-window.addEventListener('resize', scalePreview);
+window.addEventListener('resize', () => {
+  if (window._previewHTML) scalePreview();
+});
 
-// Alias
 function paginatePreview() { renderPreviewPage(); }
 
 // ── PDF EXPORT — html2canvas renders the exact preview HTML into PDF ──
@@ -1464,57 +1489,61 @@ async function doSharePDF(qid) {
   setTimeout(doPDF, 700);
 }
 
-// Generate PDF as a Blob (for sharing)
+// Generate PDF as a Blob
+// Uses the same window._previewHTML as the preview so they always match.
 async function generatePDFBlob() {
   if (!window.jspdf || !window.html2canvas) return null;
-  const docEl = document.getElementById('prev-doc');
-  if (!docEl) return null;
+  const html   = window._previewHTML;
+  const accent = window._previewAccent || '#1A73E8';
+  if (!html) return null;
 
-  // KEY FIX: wait for all fonts to finish loading before capture
-  // This ensures the offline fallback font is fully applied — same metrics online & offline
   try { await document.fonts.ready; } catch(e) {}
   await new Promise(r => requestAnimationFrame(r));
-  await new Promise(r => setTimeout(r, 100));
+  await new Promise(r => setTimeout(r, 80));
 
-  // CRITICAL: Do NOT touch wrap.style.transform — that would cause the visible zoom-out bug.
-  // Instead we clone the element, render it off-screen at full 760px width.
   const FONT_STACK = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-
-  // Calculate the same content scale used in the preview
-  // so the PDF matches the preview exactly
   const A4_W_PX = 760, A4_H_PX = 1074;
-  const measureEl = docEl.cloneNode(true);
-  measureEl.style.cssText = [
-    'position:fixed','visibility:hidden','pointer-events:none',
-    'top:-99999px','left:-99999px',`width:${A4_W_PX}px`,'transform:none','display:block',
+
+  // Step 1: measure natural height with a VISIBLE probe (same as preview)
+  const probe = document.createElement('div');
+  probe.style.cssText = [
+    'position:fixed', 'top:0', 'left:0',
+    'width:760px', 'opacity:0', 'pointer-events:none', 'z-index:-999',
+    'background:#fff', 'padding:36px 40px 44px', 'box-sizing:border-box',
+    'font-family:' + FONT_STACK, 'letter-spacing:-0.01em', 'word-spacing:0.01em',
   ].join(';');
-  document.body.appendChild(measureEl);
-  const naturalH = measureEl.scrollHeight;
-  document.body.removeChild(measureEl);
+  probe.style.setProperty('--qAccent', accent);
+  probe.innerHTML = html;
+  document.body.appendChild(probe);
+  void probe.offsetHeight;
+  const naturalH = probe.scrollHeight;
+  document.body.removeChild(probe);
+
   const contentScale = naturalH > A4_H_PX ? A4_H_PX / naturalH : 1;
 
-  // Build an off-screen element that matches the preview exactly:
-  // A4 frame (760×1074) containing the content scaled to fit
+  // Step 2: build an A4 frame off-screen with scaled content (matches preview exactly)
   const frame = document.createElement('div');
   frame.style.cssText = [
-    'position:fixed','top:-99999px','left:-99999px',
-    `width:${A4_W_PX}px`, `height:${A4_H_PX}px`,
-    'overflow:hidden','background:#fff','pointer-events:none',
+    'position:fixed', 'top:0', 'left:0',
+    'width:' + A4_W_PX + 'px', 'height:' + A4_H_PX + 'px',
+    'overflow:hidden', 'background:#fff', 'pointer-events:none',
+    'opacity:0', 'z-index:-999',
   ].join(';');
 
-  const clone = docEl.cloneNode(true);
+  const clone = document.createElement('div');
   clone.style.cssText = [
-    `width:${A4_W_PX}px`,
+    'width:760px', 'height:' + naturalH + 'px',
     'transform-origin:top left',
-    `transform:scale(${contentScale})`,
-    `height:${naturalH}px`,
-    'overflow:visible',
-    'font-family:'+FONT_STACK,
+    'transform:scale(' + contentScale + ')',
+    'overflow:visible', 'position:absolute', 'top:0', 'left:0',
+    'background:#fff', 'padding:36px 40px 44px', 'box-sizing:border-box',
+    'font-family:' + FONT_STACK,
     'letter-spacing:-0.01em', 'word-spacing:0.01em',
   ].join(';');
-  clone.style.setProperty('--qAccent', docEl.style.getPropertyValue('--qAccent'));
+  clone.style.setProperty('--qAccent', accent);
+  clone.innerHTML = html;
   frame.appendChild(clone);
-  document.body.appendChild(frame);
+  document.body.appendChild(frame);;
 
   let canvas;
   try {
