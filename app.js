@@ -1222,49 +1222,39 @@ function buildPreview(qid) {
   setTimeout(() => { paginatePreview(); scalePreview(); }, 80);
 }
 
-// renderPreviewPage — scale-to-fit one A4 page.
-// Strategy: measure natural content height → compute content scale →
-// render scaled content inside a fixed 760×1074 A4 frame →
-// then scale that frame to fit the screen (no JS positioning tricks).
+// renderPreviewPage — measures content, applies content-scale, then screen-scale.
+// Always produces exactly one A4 page in both preview and PDF.
 function renderPreviewPage() {
-  const src  = document.getElementById('prev-doc');
-  const dest = document.getElementById('prev-pages');
+  const src  = document.getElementById('prev-doc');   // off-screen content source
+  const dest = document.getElementById('prev-pages'); // visible page container
   if (!src || !dest) return;
 
-  const A4_W = 760;    // fixed A4 width in px
-  const A4_H = 1074;   // 297mm at 96dpi
+  const A4_W = 760;   // A4 width in px at 96dpi
+  const A4_H = 1074;  // A4 height in px at 96dpi (297mm)
 
-  // ── Step 1: measure natural content height off-screen ──
-  const measure = src.cloneNode(true);
-  Object.assign(measure.style, {
-    position:'fixed', visibility:'hidden', pointerEvents:'none',
-    top:'-99999px', left:'-99999px',
-    width:A4_W+'px', transform:'none', display:'block',
-    height:'auto', maxHeight:'none',
-  });
-  document.body.appendChild(measure);
-  const naturalH = measure.scrollHeight;
-  document.body.removeChild(measure);
+  // Step 1: measure how tall the content is naturally at full 760px width
+  // prev-doc is position:fixed off-screen — just read scrollHeight
+  const naturalH = src.scrollHeight || A4_H;
 
-  // ── Step 2: content scale — shrink to fit A4 height, never enlarge ──
+  // Step 2: content scale — shrink content to fit inside A4 height
   const contentScale = naturalH > A4_H ? (A4_H / naturalH) : 1;
 
-  // ── Step 3: build the A4 page frame ──
+  // Step 3: build a single A4 page with scaled content inside
   dest.innerHTML = '';
   const page = document.createElement('div');
-  page.className = 'prev-page'; // 760×1074, overflow:hidden — from CSS
+  page.className = 'prev-page'; // CSS: 760×1074, overflow:hidden
 
-  // Inner content div: scaled to fit inside the A4 frame
+  // The inner div holds the quote HTML, scaled to fit the A4 frame
   const inner = document.createElement('div');
   Object.assign(inner.style, {
-    width:         A4_W + 'px',
-    height:        naturalH + 'px',
+    width:           A4_W + 'px',
+    height:          naturalH + 'px',
     transformOrigin: 'top left',
-    transform:     `scale(${contentScale})`,
-    overflow:      'visible',
-    position:      'absolute',
-    top:           '0',
-    left:          '0',
+    transform:       `scale(${contentScale})`,
+    overflow:        'visible',
+    position:        'absolute',
+    top:             '0',
+    left:            '0',
   });
   inner.style.setProperty('--qAccent', src.style.getPropertyValue('--qAccent'));
   inner.style.fontFamily = src.style.fontFamily || 'var(--doc-font)';
@@ -1274,44 +1264,49 @@ function renderPreviewPage() {
   dest.appendChild(page);
   dest.dataset.contentScale = String(contentScale);
 
-  // ── Step 4: scale the A4 frame to fit screen ──
+  // Step 4: fit the A4 frame to the screen
   scalePreview();
 }
 
-// scalePreview: fits the 760px A4 frame into the screen.
-// Uses a scale-box (set to scaled dimensions) containing prev-wrap (760px, transformed).
-// No translateX, no margin tricks — the scale-box IS the right size so flexbox centres it.
+// scalePreview: sets prev-wrap to the visual (post-scale) dimensions so
+// the flex parent can centre it perfectly. No translateX, no positioning hacks.
+//
+// Structure after this runs:
+//   #prev-outer (flex column, align-items:center)
+//     └─ #prev-wrap  width=760*s, height=1074*s, overflow:hidden
+//           └─ #prev-pages  760px, transform:scale(s), origin:top left
+//                └─ .prev-page  760×1074
+//
+// Because #prev-wrap IS the visual size, flexbox centres it correctly.
+// Because #prev-pages is 760px but INSIDE the clipped #prev-wrap, no overflow.
 function scalePreview() {
-  const wrap     = document.getElementById('prev-wrap');
-  const scaleBox = document.getElementById('prev-scale-box');
-  const outer    = document.getElementById('prev-outer');
-  if (!wrap || !scaleBox) return;
+  const wrap  = document.getElementById('prev-wrap');
+  const pages = document.getElementById('prev-pages');
+  const outer = document.getElementById('prev-outer');
+  if (!wrap || !pages) return;
 
   const A4_W = 760;
   const A4_H = 1074;
 
-  // Available width = outer container width, with a little padding
   const outerW      = outer ? outer.clientWidth : window.innerWidth;
   const avail       = Math.max(outerW - 16, 60);
-  const screenScale = Math.min(avail / A4_W, 1); // never enlarge
+  const screenScale = Math.min(avail / A4_W, 1); // never enlarge beyond 1
 
-  // Apply scale to #prev-wrap (transform only, origin top-left)
-  wrap.style.transform       = `scale(${screenScale})`;
-  wrap.style.transformOrigin = 'top left';
+  // Scale the content (prev-pages is 760px, transform shrinks it)
+  pages.style.transform       = `scale(${screenScale})`;
+  pages.style.transformOrigin = 'top left';
 
-  // Set the scale-box to the VISUAL dimensions after scaling
-  // This tells the flexbox layout exactly how much space the page takes
-  // so it can be perfectly centred with no overflow
-  scaleBox.style.width    = Math.round(A4_W * screenScale) + 'px';
-  scaleBox.style.height   = Math.round(A4_H * screenScale) + 'px';
-  scaleBox.style.position = 'relative';
-  scaleBox.style.flexShrink = '0';
-  scaleBox.style.overflow  = 'hidden';
+  // Set prev-wrap to the visual size so flexbox centres it
+  const vW = Math.round(A4_W * screenScale);
+  const vH = Math.round(A4_H * screenScale);
+  wrap.style.width    = vW + 'px';
+  wrap.style.height   = vH + 'px';
+  wrap.style.overflow = 'hidden';
 }
 
 window.addEventListener('resize', scalePreview);
 
-// Alias — old call sites use paginatePreview()
+// Alias
 function paginatePreview() { renderPreviewPage(); }
 
 // ── PDF EXPORT — html2canvas renders the exact preview HTML into PDF ──

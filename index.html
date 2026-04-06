@@ -436,53 +436,35 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
 .prev-outer{
   background:#D8D8D8;
   min-height:100%;
-  /* Simple vertical flex — centering handled by padding on the scale-box */
   display:flex;
   flex-direction:column;
   align-items:center;
+  justify-content:flex-start;
   padding:20px 0 40px;
-  overflow:hidden;
+  overflow:hidden; /* no horizontal bleed */
 }
 [data-theme=dark] .prev-outer{background:#181818}
 
-/* The scale-box is a container whose width = scaled A4 width (set by JS).
-   It acts as the visible "page holder". No transforms on it. */
-#prev-scale-box{
-  /* JS sets width = 760 * screenScale, height = 1074 * screenScale */
-  position:relative;
+/* prev-wrap: JS sets its width+height to the VISUAL (scaled) size.
+   This tells the flex layout exactly how much space to reserve,
+   so it can be centred correctly. overflow:hidden clips the transform. */
+#prev-wrap{
   flex-shrink:0;
+  overflow:hidden; /* clips the 760px child when scaled down */
+  position:relative;
+  /* JS sets: width, height, and --sw (scale factor) */
 }
 
-/* The actual 760px A4 page — scaled via transform-origin top-left inside scale-box */
-#prev-wrap{
+/* The actual 760px A4 content sits inside prev-wrap, scaled down */
+#prev-pages{
   width:760px;
   transform-origin:top left;
-  /* JS sets: transform: scale(screenScale) */
+  /* JS sets: transform: scale(var(--sw, 1)) */
   position:absolute;
   top:0;
   left:0;
 }
 
-/* Hidden capture element for html2canvas */
-#prev-doc{
-  width:760px;
-  background:#fff;color:#111;
-  font-family:var(--doc-font);
-  letter-spacing:-0.01em;
-  word-spacing:0.01em;
-  -webkit-font-smoothing:antialiased;
-  padding:36px 40px 44px;
-  position:absolute;
-  top:-99999px;
-  left:-99999px;
-  display:block;
-}
-
-/* The A4 page frame — always 760×1074px, clips content */
-#prev-pages{
-  width:760px;
-  position:relative;
-}
 .prev-page{
   width:760px;
   height:1074px;
@@ -492,6 +474,9 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
   box-shadow:0 2px 16px rgba(0,0,0,.25);
   box-sizing:border-box;
 }
+
+/* prev-scale-box: unused, kept for safety */
+#prev-scale-box{ display:contents; }
 
 /* ─── HEADER AREA ─── */
 .qv-title{
@@ -1012,7 +997,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
     </div>
     <div style="flex:1;overflow-y:auto" id="prev-scroll">
       <div class="prev-outer" id="prev-outer">
-        <div id="prev-scale-box"><div id="prev-wrap"><div id="prev-pages"></div></div></div><div id="prev-doc"></div>
+        <div id="prev-wrap"><div id="prev-pages"></div></div>
       </div>
     </div>
   </div>
@@ -1075,6 +1060,9 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
     <div id="cs-list"></div>
   </div>
 </div>
+
+<!-- Hidden off-screen element for html2canvas capture — never visible -->
+<div id="prev-doc" style="position:fixed;top:-99999px;left:-99999px;width:760px;visibility:hidden;pointer-events:none;background:#fff;color:#111;padding:36px 40px 44px;box-sizing:border-box;font-family:var(--doc-font);letter-spacing:-0.01em;word-spacing:0.01em;-webkit-font-smoothing:antialiased"></div>
 
 <script src="app.js"></script>
 </body>
