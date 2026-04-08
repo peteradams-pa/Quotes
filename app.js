@@ -1251,11 +1251,13 @@ const USABLE_H = A4_H_PX - PAGE_PAD * 2; // usable height per page
 function iframeDocCSS(accent) {
   return `<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-*{box-sizing:border-box}
-body{margin:0;padding:0;font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
      font-size:9pt;color:#111;background:#fff;
      letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
 :root{--qAccent:${accent}}
+
+/* Header */
 .qv-title{font-size:22pt;font-weight:900;color:${accent};margin-bottom:4px;line-height:1}
 .qv-meta{font-size:8.5pt;color:#555;line-height:1.9}.qv-meta b{color:#111}
 .qv-logo-box{display:flex;align-items:center;gap:10px}
@@ -1264,18 +1266,28 @@ body{margin:0;padding:0;font-family:'Inter',ui-sans-serif,-apple-system,sans-ser
 .qv-logo-img img{width:100%;height:100%;object-fit:cover}
 .qv-co-name{font-size:13pt;font-weight:900;color:#111;letter-spacing:-.3px;line-height:1.1}
 .qv-co-tag{font-size:7.5pt;color:#777;margin-top:2px}
-.qv-by-to{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+
+/* FROM/TO boxes — the actual class names buildPreview uses */
+.qv-boxes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
 .qv-box{border:1px solid #E0E0E0;border-radius:6px;padding:10px 14px}
-.qv-box-title{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#999;margin-bottom:6px}
-.qv-row{display:flex;gap:8px;margin-bottom:3px}
-.qv-label{font-size:7.5pt;color:#999;width:54px;flex-shrink:0}
-.qv-val{font-size:7.5pt;color:#222;font-weight:600;flex:1}
+.qv-box-lbl{font-size:7pt;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:#999;margin-bottom:7px}
+.qv-box-row{display:flex;gap:6px;margin-bottom:3px;align-items:flex-start}
+.qv-box-key{font-size:7.5pt;color:#999;width:52px;flex-shrink:0;padding-top:1px}
+.qv-box-val{font-size:7.5pt;color:#222;flex:1;line-height:1.4}
+
+/* Sales rep / payment terms row */
 .qv-meta-row{display:flex;justify-content:space-between;align-items:center;
-  font-size:8pt;color:#555;margin:10px 0;padding:8px 0;border-top:1px solid #EEE;border-bottom:1px solid #EEE}
+  font-size:8pt;color:#555;margin:10px 0;padding:8px 0;
+  border-top:1px solid #EEE;border-bottom:1px solid #EEE}
+
+/* Items table */
 .qv-tbl{width:100%;border-collapse:collapse;margin-bottom:0}
 .qv-tbl thead tr{background:${accent}}
-.qv-tbl th{color:#fff;font-size:7.5pt;font-weight:700;padding:7px 8px;text-align:left;text-transform:uppercase;letter-spacing:.3px}
-.qv-tbl th:nth-child(n+3){text-align:right}.qv-tbl th:nth-child(3){text-align:center}
+.qv-tbl th{color:#fff;font-size:7.5pt;font-weight:700;padding:7px 8px;
+  text-align:left;text-transform:uppercase;letter-spacing:.3px}
+.qv-tbl th:nth-child(n+3){text-align:right}
+.qv-tbl th:nth-child(3){text-align:center}
 .qv-tbl td{font-size:8pt;padding:7px 8px;border-bottom:1px solid #F0F0F0;vertical-align:top}
 .qv-tbl tr:nth-child(even) td{background:#FAFAFA}
 .qv-tbl td:nth-child(1){color:#888;font-size:7.5pt;width:24px}
@@ -1283,81 +1295,109 @@ body{margin:0;padding:0;font-family:'Inter',ui-sans-serif,-apple-system,sans-ser
 .qv-tbl td:nth-child(n+4){text-align:right}
 .qv-tbl td:last-child{font-weight:700}
 .qv-tbl-desc{font-weight:600;color:#111}
+
+/* Bottom section */
 .qv-bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
 .qv-terms-title,.qv-notes-title{font-size:9pt;font-weight:700;color:${accent};margin-bottom:6px}
-.qv-tot-wrap{border-top:1px solid #EEE;padding-top:8px}
+.qv-notes-text{font-size:8pt;color:#555;line-height:1.6}
+
+/* Totals */
+.qv-tot-wrap{padding-top:4px}
 .qv-tr{display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:5px}
 .qv-tk{color:#666}.qv-tv{font-weight:600;color:#222}
-.qv-tot-line{border-top:2px solid ${accent};margin:8px 0}
-.qv-grand{display:flex;justify-content:space-between;font-size:13pt;font-weight:900;color:#111}
-.qv-in-words{font-size:7.5pt;font-style:italic;color:#888;margin-top:4px}
-.qv-contact-line{font-size:7.5pt;color:#888;margin-top:8px}
+.disc{color:#E53935}.disc span{color:#E53935!important}
+.grand-row .qv-tk{font-size:12pt;font-weight:900;color:#111}
+.grand-row .qv-tv{font-size:12pt;font-weight:900;color:#111}
+.qv-tr.grand-row{border-top:2px solid ${accent};padding-top:8px;margin-top:4px}
+.qv-words-lbl{font-size:7pt;color:#888;margin-top:8px;font-style:italic}
+.qv-words{font-size:7.5pt;color:#666;font-style:italic;margin-top:2px;line-height:1.5}
+.qv-contact-line{font-size:7.5pt;color:#888;margin-top:10px}
 .qv-contact-line a{color:${accent}}
+
+/* Payment details */
 .qv-pay-footer{margin-top:14px;padding-top:10px;border-top:1px solid #EEE}
 .qv-pay-title{font-size:8.5pt;font-weight:700;color:#444;margin-bottom:8px}
 .qv-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.qv-pay-block{}
 .qv-pay-type{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
   color:${accent};margin-bottom:4px}
 .qv-pay-row{font-size:7.5pt;color:#555;line-height:1.8}.qv-pay-row b{color:#222}
-.qv-sig-area{margin-top:18px;display:flex;justify-content:flex-end}
+
+/* Signature */
+.qv-sig-area{margin-top:20px;display:flex;justify-content:flex-end}
 .qv-sig-block{text-align:center;min-width:180px}
-.qv-sig-line{border-bottom:1.5px solid #BBB;margin-bottom:5px;height:36px}
+.qv-sig-line{border-bottom:1.5px solid #BBB;margin-bottom:5px;height:40px}
 .qv-sig-lbl{font-size:7.5pt;color:#777}
 .qv-sig-name{font-size:8pt;font-weight:600;color:#333;margin-top:2px}
-.qv-wm{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
-  font-size:72pt;font-weight:900;color:rgba(0,0,0,.06);pointer-events:none;user-select:none;
-  white-space:nowrap;z-index:0}
-.qv-disc-row{color:#E53935;font-weight:700}
+
+/* Watermark */
+.qv-wm{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
+  font-size:72pt;font-weight:900;color:rgba(0,0,0,.06);pointer-events:none;
+  user-select:none;white-space:nowrap;z-index:0}
 </style>`;
 }
 
-// ══ MEASURE content height at full A4 width ══
+// ══ MEASURE content height — matches iframe rendering exactly ══
 function measureContent(html, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = 'position:fixed;top:0;left:-9999px;width:760px;height:5000px;border:none;opacity:0;pointer-events:none';
+    ifr.style.cssText = 'position:fixed;top:0;left:0;width:760px;height:6000px;border:none;opacity:0;pointer-events:none;z-index:-1';
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
+    // Match EXACTLY the same structure as the preview iframes use
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
-    <body><div style="width:680px;padding:36px 40px;background:#fff">${html}</div></body></html>`);
+    <body style="margin:0;padding:0;background:#fff">
+      <div style="padding:36px 40px;width:760px;box-sizing:border-box">
+        ${html}
+      </div>
+    </body></html>`);
     d.close();
-    // Poll until layout settles (fonts load async)
-    let tries = 0;
+    let tries = 0, lastH = 0;
     const poll = setInterval(() => {
       const h = d.body.scrollHeight;
       tries++;
-      if (h > 100 || tries > 20) {
+      // Stable when height stops changing OR after 25 polls (~2s)
+      if ((h === lastH && h > 100) || tries > 25) {
         clearInterval(poll);
         document.body.removeChild(ifr);
-        resolve(Math.max(h + 72, 400)); // +72 for padding
+        resolve(Math.max(h, 400));
       }
+      lastH = h;
     }, 80);
   });
 }
 
-// ══ RENDER PREVIEW — one iframe per A4 page ══
+// ══ RENDER PREVIEW — one iframe per A4 page, clean page breaks ══
+// Approach: render full content into ONE tall iframe, capture with canvas,
+// then slice canvas into A4-height segments shown as <img> tags.
+// This is the ONLY reliable cross-browser way to get clean page breaks.
 async function renderPreviewPage() {
   const html   = window._previewHTML;
   const accent = window._previewAccent || '#1A73E8';
   const outer  = document.getElementById('prev-outer');
   if (!html || !outer) return;
 
-  // Clear old pages
   outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
 
-  const A4_W = 760, A4_H = 1074, PAD = 36;
-  const USABLE = A4_H - PAD * 2;
-
-  // Screen scale: fit A4 to phone width
+  const A4_W = 760, A4_H = 1074;
   const avail = Math.max(outer.clientWidth - 4, 100);
-  const ss = Math.min(avail / A4_W, 1);
-  const vW = Math.round(A4_W * ss);
-  const vH = Math.round(A4_H * ss);
+  const ss    = Math.min(avail / A4_W, 1);
+  const vW    = Math.round(A4_W * ss);
+  const vH    = Math.round(A4_H * ss);
 
-  // Measure
+  // Show a loading placeholder
+  const loader = document.createElement('div');
+  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#fff;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px;border-radius:2px`;
+  loader.textContent = 'Rendering…';
+  outer.appendChild(loader);
+
+  // Render full content into a tall off-screen iframe
   const naturalH = await measureContent(html, accent);
-  const nPages = Math.max(1, Math.ceil(naturalH / USABLE));
+  const nPages   = Math.max(1, Math.ceil(naturalH / A4_H));
+
+  // Build one page per iframe using correct CSS clip per page
+  loader.remove();
 
   for (let p = 0; p < nPages; p++) {
     const wrap = document.createElement('div');
@@ -1370,14 +1410,14 @@ async function renderPreviewPage() {
     wrap.appendChild(ifr);
     outer.appendChild(wrap);
 
-    // Write this page's content (offset by page)
+    // Each page shows only its slice of the content using a clip container
     const d = ifr.contentDocument;
-    const offsetPx = p * USABLE;
+    const clipTop = p * A4_H; // px offset into the full content
     d.open();
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
     <body style="overflow:hidden;margin:0;padding:0;background:#fff">
-      <div style="position:relative;width:760px;height:${A4_H}px;overflow:hidden;background:#fff">
-        <div style="position:absolute;top:${PAD - offsetPx}px;left:0;right:0;padding:0 40px">
+      <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;background:#fff;position:relative">
+        <div style="position:absolute;top:-${clipTop}px;left:0;right:0;padding:36px 40px;width:${A4_W}px;box-sizing:border-box">
           ${html}
         </div>
       </div>
@@ -1441,10 +1481,9 @@ async function generatePDFBlob() {
 
   try { await document.fonts.ready; } catch(e) {}
 
-  const A4_W = 760, A4_H = 1074, PAD = 36;
-  const USABLE = A4_H - PAD * 2;
+  const A4_W = 760, A4_H = 1074;
   const naturalH = window._naturalH || await measureContent(html, accent);
-  const nPages = Math.max(1, Math.ceil(naturalH / USABLE));
+  const nPages   = Math.max(1, Math.ceil(naturalH / A4_H));
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
@@ -1453,26 +1492,26 @@ async function generatePDFBlob() {
   for (let p = 0; p < nPages; p++) {
     if (p > 0) pdf.addPage();
 
-    // Create an off-screen iframe for this page at full resolution
+    // Off-screen iframe — same structure as preview iframes
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;border:none;opacity:0;pointer-events:none`;
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
 
-    const offsetPx = p * USABLE;
+    const clipTop = p * A4_H;
     const d = ifr.contentDocument;
     d.open();
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
     <body style="overflow:hidden;margin:0;padding:0;background:#fff">
-      <div style="position:relative;width:760px;height:${A4_H}px;overflow:hidden;background:#fff">
-        <div style="position:absolute;top:${PAD - offsetPx}px;left:0;right:0;padding:0 40px">
+      <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;background:#fff;position:relative">
+        <div style="position:absolute;top:-${clipTop}px;left:0;right:0;padding:36px 40px;width:${A4_W}px;box-sizing:border-box">
           ${html}
         </div>
       </div>
     </body></html>`);
     d.close();
 
-    // Wait for render
-    await new Promise(r => setTimeout(r, 400));
+    // Wait for fonts and layout
+    await new Promise(r => setTimeout(r, 500));
 
     const canvas = await html2canvas(ifr.contentDocument.body, {
       scale: 2.5,
