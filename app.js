@@ -1163,8 +1163,8 @@ function buildPreview(qid) {
       <tbody>${rows}</tbody>
     </table>
 
-    <!-- BOTTOM: TERMS LEFT, TOTALS RIGHT -->
-    <div class="qv-bottom">
+    <!-- BOTTOM: TERMS + TOTALS + PAYMENT + SIGNATURE — kept together as atomic block -->
+    <div id="qv-summary"><div class="qv-bottom">
       <div>
         ${termsItems?`<div class="qv-terms-title" style="color:${accentColor}">Terms and Conditions</div>
         <div style="margin-bottom:12px">${termsItems}</div>`:''}
@@ -1208,7 +1208,7 @@ function buildPreview(qid) {
         <div class="qv-sig-lbl">Authorized Signature</div>
         <div class="qv-sig-name">${sp?.name||co?.name||''}</div>
       </div>
-    </div>`;
+    </div></div>`;
 
   // Store the rendered HTML and accent for use by renderPreviewPage + generatePDFBlob
   window._previewHTML    = docEl.innerHTML;
@@ -1337,46 +1337,69 @@ body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
 </style>`;
 }
 
-// ══ MEASURE content height — matches iframe rendering exactly ══
-function measureContent(html, accent) {
+// Render HTML into a measurement iframe and return {totalH, summaryTop, summaryH}
+// summaryTop = offset from top of content where #qv-summary begins
+// This lets us calculate whether summary fits on current page or must move to next
+function measureLayout(html, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = 'position:fixed;top:0;left:0;width:760px;height:6000px;border:none;opacity:0;pointer-events:none;z-index:-1';
+    ifr.style.cssText = 'position:fixed;top:0;left:0;width:760px;height:8000px;border:none;opacity:0;pointer-events:none;z-index:-1';
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
-    // Match EXACTLY the same structure as the preview iframes use
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
     <body style="margin:0;padding:0;background:#fff">
-      <div style="padding:36px 40px;width:760px;box-sizing:border-box">
+      <div id="content-root" style="padding:36px 40px;width:760px;box-sizing:border-box">
         ${html}
       </div>
     </body></html>`);
     d.close();
     let tries = 0, lastH = 0;
     const poll = setInterval(() => {
-      const h = d.body.scrollHeight;
+      const body = d.body;
+      const totalH = body.scrollHeight;
       tries++;
-      // Stable when height stops changing OR after 25 polls (~2s)
-      if ((h === lastH && h > 100) || tries > 25) {
+      if ((totalH === lastH && totalH > 100) || tries > 30) {
         clearInterval(poll);
+        // Measure where #qv-summary starts (relative to content root top)
+        const root    = d.getElementById('content-root');
+        const summary = d.getElementById('qv-summary');
+        let summaryTop = totalH, summaryH = 0;
+        if (root && summary) {
+          const rootRect    = root.getBoundingClientRect();
+          const summRect    = summary.getBoundingClientRect();
+          summaryTop = summRect.top - rootRect.top + d.documentElement.scrollTop;
+          summaryH   = summary.scrollHeight;
+        }
         document.body.removeChild(ifr);
-        resolve(Math.max(h, 400));
+        resolve({ totalH: Math.max(totalH, 400), summaryTop, summaryH });
       }
-      lastH = h;
+      lastH = totalH;
     }, 80);
   });
 }
 
-// ══ RENDER PREVIEW — one iframe per A4 page, clean page breaks ══
-// Approach: render full content into ONE tall iframe, capture with canvas,
-// then slice canvas into A4-height segments shown as <img> tags.
-// This is the ONLY reliable cross-browser way to get clean page breaks.
+// Convenience wrapper for callers that just need total height
+async function measureContent(html, accent) {
+  const { totalH } = await measureLayout(html, accent);
+  return totalH;
+}
+
+// ══ RENDER PREVIEW — smart page breaks: summary block always starts clean ══
+//
+// Algorithm:
+//   1. Measure where #qv-summary starts (summaryTop) and how tall it is (summaryH)
+//   2. Which page would summaryTop land on? → page = floor(summaryTop / A4_H)
+//   3. Is there enough room on that page? remaining = A4_H - (summaryTop % A4_H)
+//   4. If remaining < summaryH + 20px margin → inject a spacer before #qv-summary
+//      so it starts exactly at the top of the next page
+//   5. Re-measure with the spacer to get the final totalH and page count
+//
 async function renderPreviewPage() {
-  const html   = window._previewHTML;
-  const accent = window._previewAccent || '#1A73E8';
-  const outer  = document.getElementById('prev-outer');
-  if (!html || !outer) return;
+  const htmlRaw = window._previewHTML;
+  const accent  = window._previewAccent || '#1A73E8';
+  const outer   = document.getElementById('prev-outer');
+  if (!htmlRaw || !outer) return;
 
   outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
 
@@ -1386,19 +1409,41 @@ async function renderPreviewPage() {
   const vW    = Math.round(A4_W * ss);
   const vH    = Math.round(A4_H * ss);
 
-  // Show a loading placeholder
+  // Loading indicator
   const loader = document.createElement('div');
-  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#fff;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px;border-radius:2px`;
-  loader.textContent = 'Rendering…';
+  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;flex-shrink:0`;
+  loader.textContent = 'Preparing…';
   outer.appendChild(loader);
 
-  // Render full content into a tall off-screen iframe
-  const naturalH = await measureContent(html, accent);
-  const nPages   = Math.max(1, Math.ceil(naturalH / A4_H));
+  // ── Step 1: measure layout of raw HTML ──
+  const layout = await measureLayout(htmlRaw, accent);
+  const { summaryTop, summaryH } = layout;
 
-  // Build one page per iframe using correct CSS clip per page
+  // ── Step 2: determine if summary needs to move to next page ──
+  // summaryTop is relative to the content-root div (which has padding:36px 40px on top)
+  // So absolute position from top of first page = summaryTop
+  // Which page boundary does this fall near?
+  const posOnPage  = summaryTop % A4_H;          // position within current page
+  const remaining  = A4_H - posOnPage;           // space left on current page
+  const MARGIN     = 30;                          // minimum breathing room (px)
+
+  let html = htmlRaw;
+
+  if (summaryH > 0 && remaining < summaryH + MARGIN && remaining < A4_H * 0.8) {
+    // Not enough room — inject a spacer to push summary to next page
+    const spacer = `<div id="qv-page-spacer" style="height:${remaining}px;display:block"></div>`;
+    html = htmlRaw.replace('<div id="qv-summary">', spacer + '<div id="qv-summary">');
+  }
+
+  // ── Step 3: re-measure with spacer (if inserted) ──
+  const finalH  = html !== htmlRaw
+    ? (await measureLayout(html, accent)).totalH
+    : layout.totalH;
+  const nPages  = Math.max(1, Math.ceil(finalH / A4_H));
+
   loader.remove();
 
+  // ── Step 4: render one iframe per page ──
   for (let p = 0; p < nPages; p++) {
     const wrap = document.createElement('div');
     wrap.className = 'prev-iframe-wrap';
@@ -1410,9 +1455,8 @@ async function renderPreviewPage() {
     wrap.appendChild(ifr);
     outer.appendChild(wrap);
 
-    // Each page shows only its slice of the content using a clip container
-    const d = ifr.contentDocument;
-    const clipTop = p * A4_H; // px offset into the full content
+    const d       = ifr.contentDocument;
+    const clipTop = p * A4_H;
     d.open();
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
     <body style="overflow:hidden;margin:0;padding:0;background:#fff">
@@ -1426,7 +1470,8 @@ async function renderPreviewPage() {
   }
 
   window._previewPages = nPages;
-  window._naturalH     = naturalH;
+  window._naturalH     = finalH;
+  window._previewHTML_paged = html;  // HTML with spacer injected — used by PDF
   window._previewAccentUsed = accent;
 }
 
@@ -1475,7 +1520,8 @@ async function doPDF() {
 
 async function generatePDFBlob() {
   if (!window.jspdf || !window.html2canvas) return null;
-  const html   = window._previewHTML;
+  // Use the page-break-adjusted HTML (with spacer injected if needed)
+  const html   = window._previewHTML_paged || window._previewHTML;
   const accent = window._previewAccentUsed || window._previewAccent || '#1A73E8';
   if (!html) return null;
 
