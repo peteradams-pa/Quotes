@@ -1228,117 +1228,177 @@ function buildPreview(qid) {
 //   4. Scale the whole frame to fit the screen width (screenScale)
 //   5. Set #prev-wrap to the visual size so flexbox centres it with no overflow
 //
-function renderPreviewPage() {
+// ══════════════════════════════════════════════════════════════
+// PREVIEW & PDF — iframe-based multi-page rendering
+//
+// Architecture:
+//   buildPreview() → stores HTML in window._previewHTML
+//   renderPreviewPage() → renders N iframes (one per A4 page)
+//   generatePDFBlob() → uses jsPDF.html() for clean multi-page PDF
+//
+// Pages are split by measuring how tall the content is, then
+// using CSS column-based slicing to show page N as an iframe.
+// ══════════════════════════════════════════════════════════════
+
+const A4_W_PX = 760;    // A4 width  in px at 96dpi
+const A4_H_PX = 1074;   // A4 height in px at 96dpi (297mm)
+const PAGE_PAD = 36;    // top/bottom padding inside each page (px)
+const USABLE_H = A4_H_PX - PAGE_PAD * 2; // usable height per page
+
+
+// ══ QUOTE DOCUMENT STYLES for iframe ══
+// Self-contained CSS — does NOT depend on the main page stylesheet
+function iframeDocCSS(accent) {
+  return `<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*{box-sizing:border-box}
+body{margin:0;padding:0;font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
+     font-size:9pt;color:#111;background:#fff;
+     letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
+:root{--qAccent:${accent}}
+.qv-title{font-size:22pt;font-weight:900;color:${accent};margin-bottom:4px;line-height:1}
+.qv-meta{font-size:8.5pt;color:#555;line-height:1.9}.qv-meta b{color:#111}
+.qv-logo-box{display:flex;align-items:center;gap:10px}
+.qv-logo-img{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-size:20px;font-weight:900;overflow:hidden;flex-shrink:0}
+.qv-logo-img img{width:100%;height:100%;object-fit:cover}
+.qv-co-name{font-size:13pt;font-weight:900;color:#111;letter-spacing:-.3px;line-height:1.1}
+.qv-co-tag{font-size:7.5pt;color:#777;margin-top:2px}
+.qv-by-to{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.qv-box{border:1px solid #E0E0E0;border-radius:6px;padding:10px 14px}
+.qv-box-title{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#999;margin-bottom:6px}
+.qv-row{display:flex;gap:8px;margin-bottom:3px}
+.qv-label{font-size:7.5pt;color:#999;width:54px;flex-shrink:0}
+.qv-val{font-size:7.5pt;color:#222;font-weight:600;flex:1}
+.qv-meta-row{display:flex;justify-content:space-between;align-items:center;
+  font-size:8pt;color:#555;margin:10px 0;padding:8px 0;border-top:1px solid #EEE;border-bottom:1px solid #EEE}
+.qv-tbl{width:100%;border-collapse:collapse;margin-bottom:0}
+.qv-tbl thead tr{background:${accent}}
+.qv-tbl th{color:#fff;font-size:7.5pt;font-weight:700;padding:7px 8px;text-align:left;text-transform:uppercase;letter-spacing:.3px}
+.qv-tbl th:nth-child(n+3){text-align:right}.qv-tbl th:nth-child(3){text-align:center}
+.qv-tbl td{font-size:8pt;padding:7px 8px;border-bottom:1px solid #F0F0F0;vertical-align:top}
+.qv-tbl tr:nth-child(even) td{background:#FAFAFA}
+.qv-tbl td:nth-child(1){color:#888;font-size:7.5pt;width:24px}
+.qv-tbl td:nth-child(3){text-align:center}
+.qv-tbl td:nth-child(n+4){text-align:right}
+.qv-tbl td:last-child{font-weight:700}
+.qv-tbl-desc{font-weight:600;color:#111}
+.qv-bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
+.qv-terms-title,.qv-notes-title{font-size:9pt;font-weight:700;color:${accent};margin-bottom:6px}
+.qv-tot-wrap{border-top:1px solid #EEE;padding-top:8px}
+.qv-tr{display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:5px}
+.qv-tk{color:#666}.qv-tv{font-weight:600;color:#222}
+.qv-tot-line{border-top:2px solid ${accent};margin:8px 0}
+.qv-grand{display:flex;justify-content:space-between;font-size:13pt;font-weight:900;color:#111}
+.qv-in-words{font-size:7.5pt;font-style:italic;color:#888;margin-top:4px}
+.qv-contact-line{font-size:7.5pt;color:#888;margin-top:8px}
+.qv-contact-line a{color:${accent}}
+.qv-pay-footer{margin-top:14px;padding-top:10px;border-top:1px solid #EEE}
+.qv-pay-title{font-size:8.5pt;font-weight:700;color:#444;margin-bottom:8px}
+.qv-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.qv-pay-type{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:${accent};margin-bottom:4px}
+.qv-pay-row{font-size:7.5pt;color:#555;line-height:1.8}.qv-pay-row b{color:#222}
+.qv-sig-area{margin-top:18px;display:flex;justify-content:flex-end}
+.qv-sig-block{text-align:center;min-width:180px}
+.qv-sig-line{border-bottom:1.5px solid #BBB;margin-bottom:5px;height:36px}
+.qv-sig-lbl{font-size:7.5pt;color:#777}
+.qv-sig-name{font-size:8pt;font-weight:600;color:#333;margin-top:2px}
+.qv-wm{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
+  font-size:72pt;font-weight:900;color:rgba(0,0,0,.06);pointer-events:none;user-select:none;
+  white-space:nowrap;z-index:0}
+.qv-disc-row{color:#E53935;font-weight:700}
+</style>`;
+}
+
+// ══ MEASURE content height at full A4 width ══
+function measureContent(html, accent) {
+  return new Promise(resolve => {
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = 'position:fixed;top:0;left:-9999px;width:760px;height:5000px;border:none;opacity:0;pointer-events:none';
+    document.body.appendChild(ifr);
+    const d = ifr.contentDocument;
+    d.open();
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
+    <body><div style="width:680px;padding:36px 40px;background:#fff">${html}</div></body></html>`);
+    d.close();
+    // Poll until layout settles (fonts load async)
+    let tries = 0;
+    const poll = setInterval(() => {
+      const h = d.body.scrollHeight;
+      tries++;
+      if (h > 100 || tries > 20) {
+        clearInterval(poll);
+        document.body.removeChild(ifr);
+        resolve(Math.max(h + 72, 400)); // +72 for padding
+      }
+    }, 80);
+  });
+}
+
+// ══ RENDER PREVIEW — one iframe per A4 page ══
+async function renderPreviewPage() {
   const html   = window._previewHTML;
   const accent = window._previewAccent || '#1A73E8';
-  const font   = window._previewFont   || "var(--doc-font)";
-  const dest   = document.getElementById('prev-pages');
-  if (!html || !dest) return;
+  const outer  = document.getElementById('prev-outer');
+  if (!html || !outer) return;
 
-  const A4_W = 760;
-  const A4_H = 1074;
-  const FONT_STACK = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+  // Clear old pages
+  outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
 
-  // ── Step 1: measure natural height using a VISIBLE temp element ──
-  // Must be visible for scrollHeight to work reliably across all browsers
-  const probe = document.createElement('div');
-  probe.style.cssText = [
-    'position:fixed',
-    'top:0', 'left:0',           // on-screen so browser renders it
-    'width:760px',
-    'opacity:0',                 // invisible to user
-    'pointer-events:none',
-    'z-index:-999',
-    'background:#fff',
-    'padding:36px 40px 44px',
-    'box-sizing:border-box',
-    'font-family:' + FONT_STACK,
-    'letter-spacing:-0.01em',
-    'word-spacing:0.01em',
-  ].join(';');
-  probe.style.setProperty('--qAccent', accent);
-  probe.innerHTML = html;
-  document.body.appendChild(probe);
+  const A4_W = 760, A4_H = 1074, PAD = 36;
+  const USABLE = A4_H - PAD * 2;
 
-  // Force layout
-  void probe.offsetHeight;
-  const naturalH = probe.scrollHeight;
-  document.body.removeChild(probe);
+  // Screen scale: fit A4 to phone width
+  const avail = Math.max(outer.clientWidth - 4, 100);
+  const ss = Math.min(avail / A4_W, 1);
+  const vW = Math.round(A4_W * ss);
+  const vH = Math.round(A4_H * ss);
 
-  // ── Step 2: content scale ──
-  const contentScale = (naturalH > A4_H) ? (A4_H / naturalH) : 1;
+  // Measure
+  const naturalH = await measureContent(html, accent);
+  const nPages = Math.max(1, Math.ceil(naturalH / USABLE));
 
-  // ── Step 3: build A4 page ──
-  dest.innerHTML = '';
-  const page = document.createElement('div');
-  page.className = 'prev-page'; // CSS: 760px wide, 1074px tall, overflow:hidden
+  for (let p = 0; p < nPages; p++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'prev-iframe-wrap';
+    wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;position:relative;flex-shrink:0`;
 
-  const inner = document.createElement('div');
-  inner.style.cssText = [
-    'width:760px',
-    'height:' + naturalH + 'px',
-    'transform-origin:top left',
-    'transform:scale(' + contentScale + ')',
-    'overflow:visible',
-    'position:absolute',
-    'top:0', 'left:0',
-    'background:#fff',
-    'padding:36px 40px 44px',
-    'box-sizing:border-box',
-    'font-family:' + FONT_STACK,
-    'letter-spacing:-0.01em',
-    'word-spacing:0.01em',
-    '-webkit-font-smoothing:antialiased',
-  ].join(';');
-  inner.style.setProperty('--qAccent', accent);
-  inner.innerHTML = html;
+    const ifr = document.createElement('iframe');
+    ifr.scrolling = 'no';
+    ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;transform:scale(${ss});transform-origin:top left;background:#fff`;
+    wrap.appendChild(ifr);
+    outer.appendChild(wrap);
 
-  page.appendChild(inner);
-  dest.appendChild(page);
+    // Write this page's content (offset by page)
+    const d = ifr.contentDocument;
+    const offsetPx = p * USABLE;
+    d.open();
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
+    <body style="overflow:hidden;margin:0;padding:0;background:#fff">
+      <div style="position:relative;width:760px;height:${A4_H}px;overflow:hidden;background:#fff">
+        <div style="position:absolute;top:${PAD - offsetPx}px;left:0;right:0;padding:0 40px">
+          ${html}
+        </div>
+      </div>
+    </body></html>`);
+    d.close();
+  }
 
-  // Store for generatePDFBlob
-  dest.dataset.naturalH     = String(naturalH);
-  dest.dataset.contentScale = String(contentScale);
-
-  // ── Step 4: fit to screen ──
-  scalePreview();
+  window._previewPages = nPages;
+  window._naturalH     = naturalH;
+  window._previewAccentUsed = accent;
 }
 
-// scalePreview: sizes #prev-wrap to the visual (scaled) A4 dimensions
-// so the flex parent centres it without overflow. Simple and reliable.
-function scalePreview() {
-  const wrap  = document.getElementById('prev-wrap');
-  const pages = document.getElementById('prev-pages');
-  const outer = document.getElementById('prev-outer');
-  if (!wrap || !pages) return;
-
-  const A4_W = 760;
-  const A4_H = 1074;
-  const outerW      = outer ? outer.clientWidth : window.innerWidth;
-  const screenScale = Math.min((outerW - 16) / A4_W, 1);
-
-  // Scale #prev-pages (760px wide) down to fit screen
-  pages.style.transform       = 'scale(' + screenScale + ')';
-  pages.style.transformOrigin = 'top left';
-
-  // #prev-wrap = the visual bounding box after scaling
-  // flexbox will centre this correctly
-  wrap.style.width    = Math.round(A4_W * screenScale) + 'px';
-  wrap.style.height   = Math.round(A4_H * screenScale) + 'px';
-  wrap.style.overflow = 'hidden';
-}
-
-window.addEventListener('resize', () => {
-  if (window._previewHTML) scalePreview();
-});
-
+function scalePreview()    { if (window._previewHTML) renderPreviewPage(); }
 function paginatePreview() { renderPreviewPage(); }
+window.addEventListener('resize', () => { if (window._previewHTML) renderPreviewPage(); });
 
-// ── PDF EXPORT — html2canvas renders the exact preview HTML into PDF ──
+// ══ PDF EXPORT — html2canvas captures each iframe page ══
 function buildFileName(q) {
   const cust = getCust(q.customerId);
   const name = (cust?.company||'Client').replace(/[^\w\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-');
-  const ver  = (DB.settings.dlIncludeVersion !== false && q.version) ? '_'+q.version : '';
+  const ver  = (DB.settings.dlIncludeVersion !== false && q.version) ? '_v'+q.version : '';
   return `${name}_${q.id}${ver}.pdf`;
 }
 
@@ -1346,265 +1406,91 @@ function doPDFById(qid) {
   curQID = qid;
   buildPreview(qid);
   openDlg('dlg-prev');
-  setTimeout(doPDF, 800);
 }
 
-// doPDF — waits for fonts to load, then renders exact HTML preview into PDF
-// Using PNG (not JPEG) avoids compression artifacts on text
 async function doPDF() {
-  if (!window.jspdf) { snack('PDF library not ready, please try again'); return; }
-  const q = DB.quotes.find(x=>x.id===curQID);
-  if (!q) { snack('Quote not found'); return; }
+  if (!window.jspdf || !window.html2canvas) { snack('PDF library loading…'); return; }
+  const q = DB.quotes.find(x=>x.id===curQID); if (!q) return;
 
-  const docEl = document.getElementById('prev-doc');
-  if (!docEl) { snack('Please open Preview first'); return; }
-
-  snack('Generating PDF…');
+  const btn = document.querySelector('#dlg-prev .btn.bp');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  snack('Building PDF…');
 
   try {
     const blob = await generatePDFBlob();
-    if (!blob) throw new Error('Failed to generate PDF blob');
+    if (!blob) throw new Error('No blob');
     const fname = buildFileName(q);
-    const url   = URL.createObjectURL(blob);
-    const a     = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url; a.download = fname; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    snack('Downloaded: ' + fname);
-  } catch(err) {
-    console.error('PDF error:', err);
-    snack('PDF generation failed — try again');
+    snack('Saved: ' + fname);
+  } catch(e) {
+    console.error(e);
+    snack('PDF failed — try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons-round">download</span> Save PDF'; }
   }
 }
 
-// ── SHARE QUOTE ──────────────────────────────────────────
-function openShareDialog(qid) {
-  curQID = qid;
-  const q    = DB.quotes.find(x=>x.id===qid); if (!q) return;
-  const cust = getCust(q.customerId);
-  const tots = calcTotals(q);
-
-  document.getElementById('share-quote-label').textContent =
-    `${q.id} · ${cust?.company||'Unknown'} · ${fmt(tots.total)}`;
-
-  const email   = cust?.email || '';
-  const subject = encodeURIComponent(`Quotation ${q.id} from ${(activeCo()||{}).name||'Us'}`);
-  const body    = encodeURIComponent(
-    `Dear ${cust?.contact||'Sir/Madam'},\n\nPlease find attached your quotation ${q.id} for ${fmt(tots.total)}.\n\nValid until: ${fmtDate(q.validUntil)}\n\nKind regards,\n${(activeCo()||{}).name||''}`
-  );
-  const waText  = encodeURIComponent(
-    `Hello ${cust?.contact||''},\n\nYour quotation *${q.id}* for *${fmt(tots.total)}* is ready.\nValid until: ${fmtDate(q.validUntil)}\n\n_${(activeCo()||{}).name||''}_`
-  );
-
-  const shareItems = [
-    { icon:'email',        color:'#EA4335', label:'Email',        action:`window.open('mailto:${email}?subject=${subject}&body=${body}','_blank')` },
-    { icon:'chat',         color:'#25D366', label:'WhatsApp',     action:`window.open('https://wa.me/?text=${waText}','_blank')` },
-    { icon:'content_copy', color:'#5F6368', label:'Copy Link',    action:`copyQuoteText('${qid}')` },
-    { icon:'picture_as_pdf',color:'#F4511E',label:'Download PDF', action:`doSharePDF('${qid}')` },
-  ];
-
-  // Add native share if supported
-  const nativeBtn = navigator.share ? `
-    <div class="si" onclick="doNativeShare('${qid}')">
-      <div class="si-ic" style="background:#1A73E820;color:#1A73E8">
-        <span class="material-icons-round">ios_share</span>
-      </div>
-      <div class="si-tx"><div class="si-m">Share via…</div>
-        <div class="si-s">Use device share sheet</div></div>
-    </div>` : '';
-
-  document.getElementById('share-body').innerHTML = nativeBtn + shareItems.map(item => `
-    <div class="si" onclick="${item.action};closeDlg('dlg-share')">
-      <div class="si-ic" style="background:${item.color}20;color:${item.color}">
-        <span class="material-icons-round">${item.icon}</span>
-      </div>
-      <div class="si-tx"><div class="si-m">${item.label}</div></div>
-    </div>`).join('');
-
-  document.getElementById('share-progress').style.display = 'none';
-  openDlg('dlg-share');
-}
-
-async function doGeneratePDFAndShare() {
-  const q = DB.quotes.find(x=>x.id===curQID); if (!q) return;
-
-  // Build preview if not already built
-  if (!document.getElementById('prev-doc').innerHTML.trim()) {
-    buildPreview(curQID);
-    await new Promise(r => setTimeout(r, 600));
-  }
-
-  const progress = document.getElementById('share-progress');
-  const genBtn   = document.querySelector('#dlg-share .btn.bp.btn-w');
-  if (genBtn) genBtn.style.display = 'none';
-  progress.style.display = 'block';
-  document.getElementById('share-progress-msg').textContent = 'Generating PDF…';
-
-  try {
-    const pdfBlob = await generatePDFBlob();
-    if (!pdfBlob) throw new Error('No blob');
-
-    const fname = buildFileName(q);
-    const file  = new File([pdfBlob], fname, { type:'application/pdf' });
-
-    if (navigator.share && navigator.canShare && navigator.canShare({ files:[file] })) {
-      document.getElementById('share-progress-msg').textContent = 'Opening share sheet…';
-      await navigator.share({
-        title: `Quotation ${q.id}`,
-        text: `Quotation ${q.id} for ${fmt(calcTotals(q).total)}`,
-        files: [file],
-      });
-      snack('Shared successfully');
-    } else {
-      // Fallback: just download the PDF
-      const url = URL.createObjectURL(pdfBlob);
-      const a   = document.createElement('a');
-      a.href = url; a.download = fname; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      snack('PDF downloaded: ' + fname);
-    }
-  } catch(err) {
-    if (err.name !== 'AbortError') {
-      snack('Could not share — PDF downloaded instead');
-    }
-  }
-
-  progress.style.display = 'none';
-  if (genBtn) genBtn.style.display = '';
-  closeDlg('dlg-share');
-}
-
-async function doNativeShare(qid) {
-  curQID = qid;
-  closeDlg('dlg-share');
-  buildPreview(qid);
-  openDlg('dlg-prev');
-  await new Promise(r => setTimeout(r, 700));
-  await doGeneratePDFAndShare();
-}
-
-async function doSharePDF(qid) {
-  curQID = qid;
-  buildPreview(qid);
-  openDlg('dlg-prev');
-  setTimeout(doPDF, 700);
-}
-
-// Generate PDF as a Blob
-// Uses the same window._previewHTML as the preview so they always match.
 async function generatePDFBlob() {
   if (!window.jspdf || !window.html2canvas) return null;
   const html   = window._previewHTML;
-  const accent = window._previewAccent || '#1A73E8';
+  const accent = window._previewAccentUsed || window._previewAccent || '#1A73E8';
   if (!html) return null;
 
   try { await document.fonts.ready; } catch(e) {}
-  await new Promise(r => requestAnimationFrame(r));
-  await new Promise(r => setTimeout(r, 80));
 
-  const FONT_STACK = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-  const A4_W_PX = 760, A4_H_PX = 1074;
+  const A4_W = 760, A4_H = 1074, PAD = 36;
+  const USABLE = A4_H - PAD * 2;
+  const naturalH = window._naturalH || await measureContent(html, accent);
+  const nPages = Math.max(1, Math.ceil(naturalH / USABLE));
 
-  // Step 1: measure natural height with a VISIBLE probe (same as preview)
-  const probe = document.createElement('div');
-  probe.style.cssText = [
-    'position:fixed', 'top:0', 'left:0',
-    'width:760px', 'opacity:0', 'pointer-events:none', 'z-index:-999',
-    'background:#fff', 'padding:36px 40px 44px', 'box-sizing:border-box',
-    'font-family:' + FONT_STACK, 'letter-spacing:-0.01em', 'word-spacing:0.01em',
-  ].join(';');
-  probe.style.setProperty('--qAccent', accent);
-  probe.innerHTML = html;
-  document.body.appendChild(probe);
-  void probe.offsetHeight;
-  const naturalH = probe.scrollHeight;
-  document.body.removeChild(probe);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
+  const PW = 210, PH = 297;
 
-  const contentScale = naturalH > A4_H_PX ? A4_H_PX / naturalH : 1;
+  for (let p = 0; p < nPages; p++) {
+    if (p > 0) pdf.addPage();
 
-  // Step 2: build an A4 frame off-screen with scaled content (matches preview exactly)
-  const frame = document.createElement('div');
-  frame.style.cssText = [
-    'position:fixed', 'top:0', 'left:0',
-    'width:' + A4_W_PX + 'px', 'height:' + A4_H_PX + 'px',
-    'overflow:hidden', 'background:#fff', 'pointer-events:none',
-    'opacity:0', 'z-index:-999',
-  ].join(';');
+    // Create an off-screen iframe for this page at full resolution
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;border:none;opacity:0;pointer-events:none`;
+    document.body.appendChild(ifr);
 
-  const clone = document.createElement('div');
-  clone.style.cssText = [
-    'width:760px', 'height:' + naturalH + 'px',
-    'transform-origin:top left',
-    'transform:scale(' + contentScale + ')',
-    'overflow:visible', 'position:absolute', 'top:0', 'left:0',
-    'background:#fff', 'padding:36px 40px 44px', 'box-sizing:border-box',
-    'font-family:' + FONT_STACK,
-    'letter-spacing:-0.01em', 'word-spacing:0.01em',
-  ].join(';');
-  clone.style.setProperty('--qAccent', accent);
-  clone.innerHTML = html;
-  frame.appendChild(clone);
-  document.body.appendChild(frame);;
+    const offsetPx = p * USABLE;
+    const d = ifr.contentDocument;
+    d.open();
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
+    <body style="overflow:hidden;margin:0;padding:0;background:#fff">
+      <div style="position:relative;width:760px;height:${A4_H}px;overflow:hidden;background:#fff">
+        <div style="position:absolute;top:${PAD - offsetPx}px;left:0;right:0;padding:0 40px">
+          ${html}
+        </div>
+      </div>
+    </body></html>`);
+    d.close();
 
-  let canvas;
-  try {
-    canvas = await html2canvas(frame, {
-      scale: 2.5,           // Higher = crisper text
+    // Wait for render
+    await new Promise(r => setTimeout(r, 400));
+
+    const canvas = await html2canvas(ifr.contentDocument.body, {
+      scale: 2.5,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      removeContainer: true,
-      // onclone injects font CSS into the captured clone
-      // This guarantees the same font renders whether online or offline
-      onclone: (clonedDoc, clonedEl) => {
-        const style = clonedDoc.createElement('style');
-        style.textContent = [
-          '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
-          '* { font-family: ' + FONT_STACK + ' !important;',
-          '    letter-spacing: -0.01em !important;',
-          '    word-spacing: 0.01em !important; }',
-          'b, strong { font-weight: 700 !important; }',
-          'body { -webkit-font-smoothing: antialiased; }',
-        ].join('\n');
-        clonedDoc.head.insertBefore(style, clonedDoc.head.firstChild);
-        // Also set inline on the doc element
-        if (clonedEl) {
-          clonedEl.style.fontFamily = FONT_STACK;
-          clonedEl.style.letterSpacing = '-0.01em';
-          clonedEl.style.wordSpacing = '0.01em';
-        }
-      }
+      width: A4_W,
+      height: A4_H,
     });
-  } finally {
-    if (frame && frame.parentNode) frame.parentNode.removeChild(frame);
-  }
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
-
-  // The canvas is always exactly the A4 frame (760×1074px at contentScale)
-  // Map it to full A4 page — one page, perfectly fitted, no overflow
-  const imgData = canvas.toDataURL('image/png');
-  pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, '', 'FAST');
-
-  // Legacy multi-page fallback — kept but never reached with scale-to-fit
-  if (false) {
-    const canvasPageH = Math.floor(canvas.width * (297 / 210));
-    let srcY = 0, first = true;
-    while (srcY < canvas.height) {
-      if (!first) pdf.addPage();
-      const sliceH = Math.min(canvasPageH, canvas.height - srcY);
-      const sc = document.createElement('canvas');
-      sc.width = canvas.width; sc.height = sliceH;
-      sc.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      const renderedH = (sliceH * pageW) / canvas.width;
-      pdf.addImage(sc.toDataURL('image/png'), 'PNG', 0, 0, pageW, renderedH, '', 'FAST');
-      srcY += sliceH; first = false;
-    }
+    document.body.removeChild(ifr);
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, PW, PH, '', 'FAST');
   }
 
   return pdf.output('blob');
 }
+
 
 function addCatItem() {
   const list = document.getElementById('cat-list-ed'); if (!list) return;

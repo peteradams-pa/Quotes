@@ -434,49 +434,33 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
    PRINT / PREVIEW — matches sample invoice
 ══════════════════════════════════════ */
 .prev-outer{
-  background:#D8D8D8;
+  background:#C8C8C8;
   min-height:100%;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:flex-start;
-  padding:20px 0 40px;
-  overflow:hidden; /* no horizontal bleed */
+  padding:16px 0 40px;
+  gap:16px;
+  overflow-x:hidden;
+  overflow-y:auto;
 }
-[data-theme=dark] .prev-outer{background:#181818}
+[data-theme=dark] .prev-outer{background:#1A1A1A}
 
-/* prev-wrap: JS sets its width+height to the VISUAL (scaled) size.
-   This tells the flex layout exactly how much space to reserve,
-   so it can be centred correctly. overflow:hidden clips the transform. */
-#prev-wrap{
-  flex-shrink:0;
-  overflow:hidden; /* clips the 760px child when scaled down */
-  position:relative;
-  /* JS sets: width, height, and --sw (scale factor) */
-}
-
-/* The actual 760px A4 content sits inside prev-wrap, scaled down */
-#prev-pages{
-  width:760px;
-  transform-origin:top left;
-  /* JS sets: transform: scale(var(--sw, 1)) */
-  position:absolute;
-  top:0;
-  left:0;
-}
-
-.prev-page{
-  width:760px;
-  height:1074px;
+/* Each page = an iframe showing one A4 page */
+.prev-iframe-wrap{
+  box-shadow:0 2px 16px rgba(0,0,0,.3);
   background:#fff;
-  position:relative;
-  overflow:hidden;
-  box-shadow:0 2px 16px rgba(0,0,0,.25);
-  box-sizing:border-box;
+  /* JS sets width and height to scaled values */
+}
+.prev-iframe-wrap iframe{
+  border:none;
+  display:block;
 }
 
-/* prev-scale-box: unused, kept for safety */
-#prev-scale-box{ display:contents; }
+/* Legacy — kept for html2canvas capture only */
+#prev-wrap{ display:none; }
+#prev-pages{ display:none; }
+#prev-scale-box{ display:none; }
 
 /* ─── HEADER AREA ─── */
 .qv-title{
@@ -997,7 +981,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}
     </div>
     <div style="flex:1;overflow-y:auto" id="prev-scroll">
       <div class="prev-outer" id="prev-outer">
-        <div id="prev-wrap"><div id="prev-pages"></div></div>
+        <!-- pages rendered as iframes by JS -->
       </div>
     </div>
   </div>
