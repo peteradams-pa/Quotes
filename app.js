@@ -1239,10 +1239,10 @@ function buildPreview(qid) {
 // using CSS column-based slicing to show page N as an iframe.
 // ══════════════════════════════════════════════════════════════
 
-const A4_W_PX = 760;    // A4 width  in px at 96dpi
-const A4_H_PX = 1074;   // A4 height in px at 96dpi (297mm)
-const PAGE_PAD = 36;    // top/bottom padding inside each page (px)
-const USABLE_H = A4_H_PX - PAGE_PAD * 2; // usable height per page
+// A4 dimensions (also declared as A4_W/A4_H/MARGIN/USABLE_H below — kept for compatibility)
+const A4_W_PX = 760;
+const A4_H_PX = 1074;
+const PAGE_PAD = 36;
 
 
 // ══ QUOTE DOCUMENT STYLES for iframe ══
@@ -1337,44 +1337,81 @@ body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
 }
 
 // Measure layout: returns top/height of both atomic blocks
-// Used to decide whether each block needs a spacer to push it to the next page
+// ══ PAGE LAYOUT CONSTANTS ══
+const A4_W       = 760;   // px
+const A4_H       = 1074;  // px  (297mm @ 96dpi)
+const MARGIN     = 40;    // uniform margin: top/bottom of every page, left/right sides
+// The content wrapper uses: padding: MARGIN px  on all 4 sides
+// So usable content height per page = A4_H - MARGIN*2
+const USABLE_H   = A4_H - MARGIN * 2;  // = 994px
+
+// Write an iframe document with the full-width content at the right padding
+function writeIframeDoc(d, html, accent, offsetY) {
+  // offsetY: how many px of content to skip from top (= pageIndex * A4_H)
+  // Page top margin on cont pages = MARGIN extra (already included since we
+  // offset the whole content div by -offsetY and it starts at MARGIN from top)
+  d.open();
+  d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
+  <body style="overflow:hidden;margin:0;padding:0;background:#fff">
+    <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;position:relative;background:#fff">
+      <div id="content-root" style="position:absolute;top:${MARGIN - offsetY}px;left:0;right:0;
+           padding:0 ${MARGIN}px;width:${A4_W}px;box-sizing:border-box">
+        ${html}
+      </div>
+    </div>
+  </body></html>`);
+  d.close();
+}
+
+// Measure the layout of html content: total height, and top+height of each block
+// Returns Promise<{ totalH, b1Top, b1H, b2Top, b2H }>
+// All values are in px, measured from the top of the content (excluding the MARGIN top padding)
 function measureLayout(html, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = 'position:fixed;top:0;left:0;width:760px;height:9000px;border:none;opacity:0;pointer-events:none;z-index:-1';
+    // Tall enough to hold any content, fully visible for reliable layout
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:9000px;border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
-    // PAGE_TOP = top margin for page 1 (36px built into padding)
-    // Subsequent pages get PAGE_TOP_CONT top margin via page-break simulation
+    // Measure at full width with the same side margins
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
     <body style="margin:0;padding:0;background:#fff">
-      <div id="content-root" style="padding:36px 40px 48px;width:760px;box-sizing:border-box">
+      <div id="root" style="padding:${MARGIN}px;width:${A4_W}px;box-sizing:border-box">
         ${html}
       </div>
     </body></html>`);
     d.close();
+
     let tries = 0, lastH = 0;
     const poll = setInterval(() => {
       const totalH = d.body.scrollHeight;
       tries++;
-      if ((totalH === lastH && totalH > 100) || tries > 30) {
+      // Wait until height stabilises (fonts loaded) or 30 polls (~2.4s)
+      if ((totalH === lastH && totalH > 50) || tries > 30) {
         clearInterval(poll);
-        const root = d.getElementById('content-root');
+        const root = d.getElementById('root');
         const b1   = d.getElementById('qv-block-1');
         const b2   = d.getElementById('qv-block-2');
-        const getInfo = el => {
-          if (!el || !root) return { top: totalH, h: 0 };
+
+        const elTop = el => {
+          if (!el || !root) return totalH;
           const rr = root.getBoundingClientRect();
           const er = el.getBoundingClientRect();
-          const scrollY = d.documentElement.scrollTop || d.body.scrollTop || 0;
-          return { top: er.top - rr.top + scrollY, h: el.scrollHeight };
+          // offsetY of root from viewport top
+          const rootOffsetY = rr.top + (d.documentElement.scrollTop || 0);
+          const elOffsetY   = er.top  + (d.documentElement.scrollTop || 0);
+          // position relative to start of root content (after the MARGIN top padding)
+          return elOffsetY - rootOffsetY - MARGIN;
         };
+
         document.body.removeChild(ifr);
         resolve({
-          totalH:  Math.max(totalH, 400),
-          block1:  getInfo(b1),
-          block2:  getInfo(b2),
+          totalH: Math.max(totalH, MARGIN * 2 + 100),
+          b1Top:  b1 ? Math.max(0, elTop(b1)) : totalH,
+          b1H:    b1 ? b1.scrollHeight : 0,
+          b2Top:  b2 ? Math.max(0, elTop(b2)) : totalH,
+          b2H:    b2 ? b2.scrollHeight : 0,
         });
       }
       lastH = totalH;
@@ -1387,112 +1424,105 @@ async function measureContent(html, accent) {
   return totalH;
 }
 
+// Prevent concurrent renders (fixes page duplication on resize)
+let _renderLock = false;
+
 // ══ RENDER PREVIEW ══
-// Two atomic blocks (#qv-block-1, #qv-block-2) each get a spacer injected
-// if the remaining page space (minus bottom padding) can't fit them.
-// Each page gets proper top/bottom margins so content never hits the paper edge.
-//
+// Each of the two atomic blocks gets a spacer if it doesn't fit on the current page.
+// The spacer height = remaining space on current page so the block starts at top of next.
+// Margins: MARGIN px on all sides of every page. Page 1 bottom = MARGIN. Page 2 top = MARGIN.
 async function renderPreviewPage() {
+  if (_renderLock) return;  // prevent double-render
+  _renderLock = true;
+
   const htmlRaw = window._previewHTML;
   const accent  = window._previewAccent || '#1A73E8';
   const outer   = document.getElementById('prev-outer');
-  if (!htmlRaw || !outer) return;
+  if (!htmlRaw || !outer) { _renderLock = false; return; }
 
-  // Clear ONLY iframe pages — not other children like the loader
+  // Remove all existing page wrappers
   outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
-
-  const A4_W    = 760;
-  const A4_H    = 1074;          // full page height px
-  const PAD_TOP = 36;            // top margin on page 1 (already in content padding)
-  const PAD_BOT = 48;            // bottom margin every page — content must not go below this
-  const PAD_CONT_TOP = 40;       // top margin on continuation pages
-  const USABLE  = A4_H - PAD_BOT; // last px usable before bottom margin kicks in
 
   const avail = Math.max(outer.clientWidth - 4, 100);
   const ss    = Math.min(avail / A4_W, 1);
   const vW    = Math.round(A4_W * ss);
   const vH    = Math.round(A4_H * ss);
 
-  // Loading indicator
+  // Show loader
   const loader = document.createElement('div');
-  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;flex-shrink:0`;
+  loader.className = 'prev-iframe-wrap';
+  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;flex-shrink:0`;
   loader.textContent = 'Preparing…';
   outer.appendChild(loader);
 
-  // ── Step 1: Measure both blocks ──
-  const layout = await measureLayout(htmlRaw, accent);
-  let html = htmlRaw;
+  try {
+    // ── Step 1: measure raw layout ──
+    const L0 = await measureLayout(htmlRaw, accent);
+    let html  = htmlRaw;
 
-  // ── Step 2: Insert spacers so neither block crosses a page boundary ──
-  // We process block-1 first, then block-2 (which appears after block-1)
-  // Each spacer shifts the position of subsequent blocks, so we re-measure after each.
+    // ── Step 2: try to fit each block onto its page ──
+    // A block "fits" if its last pixel is within USABLE_H of the page's top MARGIN.
+    // If it overflows, inject a spacer before it so it starts at top of next page.
+    //
+    // Key insight: all positions are relative to content start (after top MARGIN).
+    // Page N usable zone: [N*A4_H, N*A4_H + USABLE_H]
+    // If block ends beyond N*A4_H + USABLE_H → add spacer.
 
-  const tryFit = async (currentHtml, blockId) => {
-    const L = await measureLayout(currentHtml, accent);
-    const block = L[blockId === 'qv-block-1' ? 'block1' : 'block2'];
-    if (!block || block.h === 0) return currentHtml;
+    const fitBlock = async (currentHtml, blockId) => {
+      const L = await measureLayout(currentHtml, accent);
+      const bTop = blockId === 'qv-block-1' ? L.b1Top : L.b2Top;
+      const bH   = blockId === 'qv-block-1' ? L.b1H   : L.b2H;
+      if (bH === 0) return currentHtml;
 
-    // Which page does the block start on?
-    const pageOfBlock   = Math.floor(block.top / A4_H);
-    // On page 0 the bottom margin is PAD_BOT from end of A4_H
-    // On continuation pages we also need PAD_CONT_TOP at top
-    const pageStartY    = pageOfBlock * A4_H;
-    const usableEnd     = pageStartY + USABLE; // last usable pixel on this page
-    const blockEnd      = block.top + block.h;
+      // Which A4 page does this block start on?
+      const pageIdx    = Math.floor(bTop / A4_H);
+      const pageTop    = pageIdx * A4_H;          // content-Y of this page's top margin
+      const pageBottom = pageTop + USABLE_H;      // content-Y of this page's bottom margin
 
-    if (blockEnd > usableEnd) {
-      // Block overflows bottom margin — push it to next page
-      // Spacer = space from block.top to end of this page
-      const spacerH = Math.max(usableEnd - block.top + PAD_CONT_TOP, PAD_CONT_TOP);
-      const spacer  = `<div style="height:${spacerH}px;display:block"></div>`;
-      return currentHtml.replace(`<div id="${blockId}">`, spacer + `<div id="${blockId}">`);
+      if (bTop + bH > pageBottom) {
+        // Block overflows bottom margin → push to next page
+        // Spacer height = remaining space on this page + top margin of next page (= MARGIN)
+        const remaining = pageBottom - bTop;
+        const spacerH   = Math.max(remaining + MARGIN, MARGIN);
+        const spacer    = `<div style="height:${Math.round(spacerH)}px"></div>`;
+        return currentHtml.replace(`<div id="${blockId}">`, spacer + `<div id="${blockId}">`);
+      }
+      return currentHtml;
+    };
+
+    html = await fitBlock(html, 'qv-block-1');
+    html = await fitBlock(html, 'qv-block-2');
+
+    // ── Step 3: final measurement → page count ──
+    const Lf     = await measureLayout(html, accent);
+    const finalH = Lf.totalH;
+    const nPages = Math.max(1, Math.ceil(finalH / A4_H));
+
+    // ── Step 4: remove loader, render exactly nPages iframes ──
+    loader.remove();
+
+    for (let p = 0; p < nPages; p++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'prev-iframe-wrap';
+      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;position:relative;flex-shrink:0`;
+
+      const ifr = document.createElement('iframe');
+      ifr.scrolling = 'no';
+      ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;transform:scale(${ss});transform-origin:top left;background:#fff`;
+      wrap.appendChild(ifr);
+      outer.appendChild(wrap);
+
+      writeIframeDoc(ifr.contentDocument, html, accent, p * A4_H);
     }
-    return currentHtml;
-  };
 
-  html = await tryFit(html, 'qv-block-1');
-  html = await tryFit(html, 'qv-block-2');
+    window._previewPages      = nPages;
+    window._naturalH          = finalH;
+    window._previewHTML_paged = html;
+    window._previewAccentUsed = accent;
 
-  // ── Step 3: Final measurement ──
-  const finalLayout = await measureLayout(html, accent);
-  const finalH      = finalLayout.totalH;
-  const nPages      = Math.max(1, Math.ceil(finalH / A4_H));
-
-  loader.remove();
-
-  // ── Step 4: Render one iframe per page (EXACTLY nPages — no duplication) ──
-  for (let p = 0; p < nPages; p++) {
-    const wrap = document.createElement('div');
-    wrap.className = 'prev-iframe-wrap';
-    wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;position:relative;flex-shrink:0`;
-
-    const ifr = document.createElement('iframe');
-    ifr.scrolling = 'no';
-    ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;transform:scale(${ss});transform-origin:top left;background:#fff`;
-    wrap.appendChild(ifr);
-    outer.appendChild(wrap);
-
-    const clipTop = p * A4_H;
-    // Continuation pages get extra top padding so content doesn't start at the edge
-    const contTopPad = p > 0 ? PAD_CONT_TOP : 0;
-
-    const d = ifr.contentDocument;
-    d.open();
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
-    <body style="overflow:hidden;margin:0;padding:0;background:#fff">
-      <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;background:#fff;position:relative">
-        <div style="position:absolute;top:${contTopPad - clipTop}px;left:0;right:0;padding:36px 40px 48px;width:${A4_W}px;box-sizing:border-box">
-          ${html}
-        </div>
-      </div>
-    </body></html>`);
-    d.close();
+  } finally {
+    _renderLock = false;
   }
-
-  window._previewPages      = nPages;
-  window._naturalH          = finalH;
-  window._previewHTML_paged = html;
-  window._previewAccentUsed = accent;
 }
 
 function scalePreview()    { if (window._previewHTML) renderPreviewPage(); }
@@ -1540,16 +1570,14 @@ async function doPDF() {
 
 async function generatePDFBlob() {
   if (!window.jspdf || !window.html2canvas) return null;
-  // Use the page-break-adjusted HTML (with spacer injected if needed)
   const html   = window._previewHTML_paged || window._previewHTML;
   const accent = window._previewAccentUsed || window._previewAccent || '#1A73E8';
   if (!html) return null;
 
   try { await document.fonts.ready; } catch(e) {}
 
-  const A4_W = 760, A4_H = 1074;
-  const naturalH = window._naturalH || await measureContent(html, accent);
-  const nPages   = Math.max(1, Math.ceil(naturalH / A4_H));
+  // Use same nPages as preview — already calculated with spacers applied
+  const nPages = window._previewPages || Math.max(1, Math.ceil((window._naturalH||A4_H) / A4_H));
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
@@ -1558,36 +1586,19 @@ async function generatePDFBlob() {
   for (let p = 0; p < nPages; p++) {
     if (p > 0) pdf.addPage();
 
-    // Off-screen iframe — same structure as preview iframes
     const ifr = document.createElement('iframe');
     ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
 
-    const clipTop    = p * A4_H;
-    const contTopPad = p > 0 ? 40 : 0; // match renderPreviewPage margins
-    const d = ifr.contentDocument;
-    d.open();
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
-    <body style="overflow:hidden;margin:0;padding:0;background:#fff">
-      <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;background:#fff;position:relative">
-        <div style="position:absolute;top:${contTopPad - clipTop}px;left:0;right:0;padding:36px 40px 48px;width:${A4_W}px;box-sizing:border-box">
-          ${html}
-        </div>
-      </div>
-    </body></html>`);
-    d.close();
+    // Use same writeIframeDoc function — identical to preview
+    writeIframeDoc(ifr.contentDocument, html, accent, p * A4_H);
 
-    // Wait for fonts and layout
     await new Promise(r => setTimeout(r, 500));
 
     const canvas = await html2canvas(ifr.contentDocument.body, {
-      scale: 2.5,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: A4_W,
-      height: A4_H,
+      scale: 2.5, useCORS: true, allowTaint: true,
+      backgroundColor: '#ffffff', logging: false,
+      width: A4_W, height: A4_H,
     });
 
     document.body.removeChild(ifr);
