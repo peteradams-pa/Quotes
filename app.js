@@ -1341,44 +1341,29 @@ body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
 
 // Measure layout: returns top/height of both atomic blocks
 // ══ PAGE LAYOUT CONSTANTS ══
-const A4_W   = 760;   // px width of A4 at 96dpi
-const A4_H   = 1074;  // px height of A4 at 96dpi (297mm)
-const M      = 40;    // page margin px — applied uniformly top/bottom/left/right
+const A4_W = 760;
+const A4_H = 1074;
+const M    = 40;   // margin: top/bottom/left/right on every page
 
-// ── writeIframeDoc ─────────────────────────────────────────────────────────
-// Renders the full HTML content into document d, clipped to show only page p.
-// offsetY = p * A4_H  →  scrolls the content by that many px.
-// The content div has padding:M on all sides, so:
-//   - Page 0: content starts M px from top, ends at A4_H - M px from top
-//   - Page 1: content continues from A4_H, starting M px from the new top edge
+// Writes one page of the document into an iframe
+// offsetY = pageIndex * A4_H scrolls the full content to show that page
 function writeIframeDoc(d, html, accent, offsetY) {
   d.open();
   d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
   <body style="overflow:hidden;margin:0;padding:0;background:#fff">
     <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;position:relative;background:#fff">
-      <div style="position:absolute;top:${M - offsetY}px;left:0;right:0;
-                  padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box">
-        ${html}
-      </div>
+      <div id="cr" style="position:absolute;top:${M-offsetY}px;left:0;right:0;
+           padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box">${html}</div>
     </div>
   </body></html>`);
   d.close();
 }
 
-// ── measureLayout ──────────────────────────────────────────────────────────
-// Renders html into a tall hidden iframe with the SAME padding as writeIframeDoc.
-// Returns absolute pixel positions of block-1 and block-2 from the top of the
-// content div (i.e. from y=0 of the content, NOT from y=0 of the viewport).
-//
-// Coordinate system: y=0 = first pixel of content (same as writeIframeDoc with offsetY=0).
-// Page N shows content-y range [N*A4_H - M, N*A4_H + A4_H - M].
-// The USABLE zone on each page (inside margins) is:
-//   top edge:    N*A4_H          (the M top-margin is already baked into padding)  
-//   bottom edge: N*A4_H + (A4_H - M)   (bottom margin = M px from bottom of page)
-//
-// So content Y that fits on page N:  Y < N*A4_H + (A4_H - M)
-// → content must end before: pageIndex * A4_H + A4_H - M
-//
+// Measures the layout using offsetTop — more reliable than getBoundingClientRect.
+// The measurement iframe renders content with top:0 (no top offset) so positions
+// are raw content-Y values starting from 0.
+// writeIframeDoc adds M (40px) to the top, so we ADD M to all positions here
+// so they match the rendered coordinate system.
 function measureLayout(html, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
@@ -1387,77 +1372,64 @@ function measureLayout(html, accent) {
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
-    // CRITICAL: same structure as writeIframeDoc (same padding, same width)
-    // We just don't clip it so we get the natural scrollHeight
+    // No top offset here — we measure raw positions then add M below
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
     <body style="margin:0;padding:0;background:#fff">
-      <div id="pg" style="padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box">
-        ${html}
-      </div>
+      <div id="root" style="padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box">${html}</div>
     </body></html>`);
     d.close();
 
     let tries = 0, lastH = 0;
     const poll = setInterval(() => {
-      const rawH = d.body.scrollHeight;
+      const h = d.body.scrollHeight;
       tries++;
-      if ((rawH === lastH && rawH > 50) || tries > 30) {
+      if ((h === lastH && h > 50) || tries > 35) {
         clearInterval(poll);
 
-        // totalH = full content height in content-coordinates.
-        // The content div has no top padding here, so y=0 of content = y=0 of div.
-        // In writeIframeDoc the content starts at top=M (the margin).
-        // So we ADD M to get the position as seen when rendered.
-        const pg  = d.getElementById('pg');
-        const b1  = d.getElementById('qv-block-1');
-        const b2  = d.getElementById('qv-block-2');
-
-        // Get element top relative to #pg div top (= content-y coordinate)
-        const relTop = el => {
-          if (!el || !pg) return rawH;
-          const pgR = pg.getBoundingClientRect();
-          const elR = el.getBoundingClientRect();
-          const sy  = d.documentElement.scrollTop || 0;
-          return (elR.top + sy) - (pgR.top + sy);
+        // Use offsetTop chain — most reliable cross-browser
+        const getTop = el => {
+          if (!el) return h;
+          let t = 0, cur = el;
+          while (cur && cur !== d.body) { t += cur.offsetTop; cur = cur.offsetParent; }
+          return t;
         };
+
+        const b1 = d.getElementById('qv-block-1');
+        const b2 = d.getElementById('qv-block-2');
+
+        // Add M to convert from raw-content-Y to rendered-Y (where content starts at top=M)
+        const b1Top = b1 ? getTop(b1) + M : h + M;
+        const b2Top = b2 ? getTop(b2) + M : h + M;
 
         document.body.removeChild(ifr);
         resolve({
-          totalH: rawH + M,  // add M because writeIframeDoc starts content at top=M
-          b1Top:  b1 ? relTop(b1) + M : rawH + M,
-          b1H:    b1 ? b1.scrollHeight : 0,
-          b2Top:  b2 ? relTop(b2) + M : rawH + M,
-          b2H:    b2 ? b2.scrollHeight : 0,
+          totalH: h + M,
+          b1Top, b1H: b1 ? b1.offsetHeight : 0,
+          b2Top, b2H: b2 ? b2.offsetHeight : 0,
         });
       }
-      lastH = rawH;
+      lastH = h;
     }, 80);
   });
 }
 
 async function measureContent(html, accent) {
-  const { totalH } = await measureLayout(html, accent);
-  return totalH;
+  const r = await measureLayout(html, accent);
+  return r.totalH;
 }
 
-// Prevent concurrent renders
 let _renderLock = false;
 
-// ── renderPreviewPage ──────────────────────────────────────────────────────
-// Page-break rules (all Y values are in content-coordinates where Y=0 = top of content
-// as it appears with the M top margin on page 0):
+// Page N in writeIframeDoc shows rendered-Y range: [N*A4_H, (N+1)*A4_H)
+// The usable zone (inside margins) on page N:
+//   starts at: N*A4_H           (M top margin already baked in by writeIframeDoc's top:M)
+//   ends at:   N*A4_H + A4_H - M  (M bottom margin)
+// A block overflows page N if: blockTop + blockH > N*A4_H + A4_H - M
 //
-//   Page N:
-//     - content starts at Y = N * A4_H  (this is the top margin of page N)  
-//     - usable content ends at Y = N * A4_H + (A4_H - M)  (leaving M bottom margin)
-//
-//   A block OVERFLOWS page N if:  blockTop + blockH  >  N*A4_H + (A4_H - M)
-//
-//   Spacer to push block to page N+1:
-//     spacerH = usableEnd - blockTop  (fills remaining space on page N)
-//     After the spacer the block starts at: blockTop + spacerH = N*A4_H + (A4_H - M)
-//     In writeIframeDoc this maps to: top-margin of page N+1 (= M from top edge)
-//
+// Spacer to push block to page N+1:
+//   spacerH = (N*A4_H + A4_H - M) - blockTop
+//   This makes blockTop + spacerH = N*A4_H + A4_H - M
+//   In writeIframeDoc that's the bottom margin of page N = start of page N+1's content
 async function renderPreviewPage() {
   if (_renderLock) return;
   _renderLock = true;
@@ -1474,54 +1446,49 @@ async function renderPreviewPage() {
   const vW    = Math.round(A4_W * ss);
   const vH    = Math.round(A4_H * ss);
 
-  // Loader placeholder
   const loader = document.createElement('div');
   loader.className = 'prev-iframe-wrap';
   loader.style.cssText = `width:${vW}px;height:${vH}px;background:#f0f0f0;` +
     `display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;flex-shrink:0`;
-  loader.textContent = 'Preparing…';
+  loader.textContent = 'Rendering…';
   outer.appendChild(loader);
 
   try {
-    let html = htmlRaw;
-    const L  = await measureLayout(html, accent);
+    // pageEnd(n): last rendered-Y that fits before bottom margin of page n
+    const pageEnd = n => n * A4_H + A4_H - M;
 
-    // usableEnd(pageIdx): last content-Y that fits before the bottom margin of page N
-    const usableEnd = n => n * A4_H + (A4_H - M);
-
-    // Does a block overflow the bottom margin of the page it starts on?
+    // Does block overflow its page's bottom margin?
     const overflows = (top, h) => {
       const n = Math.floor(top / A4_H);
-      return (top + h) > usableEnd(n);
+      return top + h > pageEnd(n);
     };
 
-    // Spacer that fills remaining space on current page so next block starts
-    // exactly at the top margin (M px from top edge) of the next page.
-    const mkSpacer = (top) => {
-      const n    = Math.floor(top / A4_H);
-      const gap  = usableEnd(n) - top;       // space remaining on this page
-      const h    = Math.max(gap, 0);         // never negative
-      return `<div style="height:${Math.ceil(h)}px;display:block"></div>`;
+    // Spacer height = gap from block's top to end of that page
+    const spacerH = top => {
+      const n   = Math.floor(top / A4_H);
+      const gap = pageEnd(n) - top;
+      return Math.max(Math.ceil(gap), 0);
     };
 
-    const inject = (blockId, top, currentHtml) =>
-      currentHtml.replace(`<div id="${blockId}">`,
-                          mkSpacer(top) + `<div id="${blockId}">`);
+    const addSpacer = (id, top, h) =>
+      `<div style="height:${spacerH(top)}px;display:block"></div><div id="${id}">` ;
 
-    // Rule 1: if block-1 overflows → push block-1 (and block-2 follows it)
-    if (L.b1H > 0 && overflows(L.b1Top, L.b1H)) {
-      html = inject('qv-block-1', L.b1Top, html);
-    }
-    // Rule 2: after block-1 adjustment, re-measure and check block-2
-    const L2 = html !== htmlRaw ? await measureLayout(html, accent) : L;
-    if (L2.b2H > 0 && overflows(L2.b2Top, L2.b2H)) {
-      html = inject('qv-block-2', L2.b2Top, html);
+    let html = htmlRaw;
+    const L0 = await measureLayout(html, accent);
+
+    if (L0.b1H > 0 && overflows(L0.b1Top, L0.b1H)) {
+      // Block 1 overflows → push block 1 (block 2 follows)
+      html = html.replace(`<div id="qv-block-1">`, addSpacer('qv-block-1', L0.b1Top, L0.b1H));
     }
 
-    // Final measurement → page count
-    const Lf     = html !== htmlRaw ? await measureLayout(html, accent) : L2;
-    const finalH = Lf.totalH;
-    const nPages = Math.max(1, Math.ceil(finalH / A4_H));
+    // Re-measure after any block-1 change, then check block-2
+    const L1 = html !== htmlRaw ? await measureLayout(html, accent) : L0;
+    if (L1.b2H > 0 && overflows(L1.b2Top, L1.b2H)) {
+      html = html.replace(`<div id="qv-block-2">`, addSpacer('qv-block-2', L1.b2Top, L1.b2H));
+    }
+
+    const Lf     = html !== htmlRaw ? await measureLayout(html, accent) : L1;
+    const nPages = Math.max(1, Math.ceil(Lf.totalH / A4_H));
 
     loader.remove();
 
@@ -1541,7 +1508,7 @@ async function renderPreviewPage() {
     }
 
     window._previewPages      = nPages;
-    window._naturalH          = finalH;
+    window._naturalH          = Lf.totalH;
     window._previewHTML_paged = html;
     window._previewAccentUsed = accent;
 
