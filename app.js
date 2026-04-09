@@ -1163,51 +1163,54 @@ function buildPreview(qid) {
       <tbody>${rows}</tbody>
     </table>
 
-    <!-- BLOCK 1: Terms & Conditions + Totals (atomic — moves to next page together) -->
-    <div id="qv-block-1"><div class="qv-bottom">
-      <div>
-        ${termsItems?`<div class="qv-terms-title" style="color:${accentColor}">Terms and Conditions</div>
-        <div style="margin-bottom:12px">${termsItems}</div>`:''}
-        ${q.notes?`<div class="qv-notes-title" style="color:${accentColor}">Additional Notes</div>
-        <div class="qv-notes-text">${q.notes.replace(/\n/g,'<br>')}</div>`:''}
-        <div class="qv-contact-line">
-          For enquiries, email <a href="mailto:${co?.email||''}" style="color:${accentColor}">${co?.email||''}</a>
-          ${co?.phone?' or call <b>'+co.phone+'</b>':''}
+    <!-- BLOCK 1: Terms & Conditions + Totals only -->
+    <div id="qv-block-1">
+      <div class="qv-bottom">
+        <div>
+          ${termsItems?`<div class="qv-terms-title" style="color:${accentColor}">Terms and Conditions</div>
+          <div style="margin-bottom:10px">${termsItems}</div>`:''}
+        </div>
+        <div class="qv-tot-wrap">
+          <div class="qv-tr"><span class="qv-tk">Sub Total</span><span class="qv-tv">${fmt(tots.sub)}</span></div>
+          ${tots.discAmt>0?`<div class="qv-tr disc"><span class="qv-tk">Discount${q.discount?'('+Math.round(q.discount*100)+'%)':''}</span><span>−${fmt(tots.discAmt)}</span></div>`:''}
+          <div class="qv-tr"><span class="qv-tk">Net Amount</span><span class="qv-tv">${fmt(tots.net)}</span></div>
+          <div class="qv-tr"><span class="qv-tk">${q.taxable?DB.settings.taxLabel+' ('+Math.round((DB.settings.taxRate||.16)*100)+'%)':'Tax Exempt'}</span>
+            <span class="qv-tv">${q.taxable?fmt(tots.taxAmt):'—'}</span></div>
+          <div class="qv-tr grand-row">
+            <span class="qv-tk">Total</span>
+            <span class="qv-tv" style="font-size:13pt;font-weight:900">${fmt(tots.total)}</span>
+          </div>
+          <div class="qv-words-lbl">Invoice Total (in words)</div>
+          <div class="qv-words">${amountInWords(tots.total)}</div>
         </div>
       </div>
-      <div class="qv-tot-wrap">
-        <div class="qv-tr"><span class="qv-tk">Sub Total</span><span class="qv-tv">${fmt(tots.sub)}</span></div>
-        ${tots.discAmt>0?`<div class="qv-tr disc"><span class="qv-tk">Discount${q.discount?'('+Math.round(q.discount*100)+'%)':''}</span><span>−${fmt(tots.discAmt)}</span></div>`:''}
-        <div class="qv-tr"><span class="qv-tk">Net Amount</span><span class="qv-tv">${fmt(tots.net)}</span></div>
-        <div class="qv-tr"><span class="qv-tk">${q.taxable?DB.settings.taxLabel+' ('+Math.round((DB.settings.taxRate||.16)*100)+'%)':'Tax Exempt'}</span>
-          <span class="qv-tv">${q.taxable?fmt(tots.taxAmt):'—'}</span></div>
-        <div class="qv-tr grand-row">
-          <span class="qv-tk">Total</span>
-          <span class="qv-tv" style="font-size:13pt;font-weight:900">${fmt(tots.total)}</span>
-        </div>
-        <div class="qv-words-lbl">Invoice Total (in words)</div>
-        <div class="qv-words">${amountInWords(tots.total)}</div>
-      </div>
-    </div></div>
+    </div>
 
-    <!-- BLOCK 2: Payment + Signature (atomic — moves to next page together) -->
+    <!-- BLOCK 2: Additional Notes + For Enquiries + Payment + Signature -->
     <div id="qv-block-2">
-    ${(co?.paymentMethods||[]).length?`<div class="qv-pay-footer">
-      <div class="qv-pay-title">Payment Details</div>
-      <div class="qv-pay-grid">${pmHTML}</div>
-    </div>`:''}
-    <div class="qv-sig-area">
-      <div class="qv-sig-block">
-        ${sp?.signatureImg
-          ? `<div style="height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px">
-               <img src="${sp.signatureImg}" style="max-height:56px;max-width:180px;object-fit:contain" alt="signature">
-             </div>
-             <div style="border-bottom:1.5px solid #BBB;margin-bottom:5px"></div>`
-          : `<div class="qv-sig-line"></div>`}
-        <div class="qv-sig-lbl">Authorized Signature</div>
-        <div class="qv-sig-name">${sp?.name||co?.name||''}</div>
+      ${q.notes?`<div style="margin-top:10px"><div class="qv-notes-title" style="color:${accentColor}">Additional Notes</div>
+        <div class="qv-notes-text">${q.notes.replace(/\n/g,'<br>')}</div></div>`:''}
+      <div class="qv-contact-line" style="margin-top:8px">
+        For enquiries, email <a href="mailto:${co?.email||''}" style="color:${accentColor}">${co?.email||''}</a>
+        ${co?.phone?' or call <b>'+co.phone+'</b>':''}
       </div>
-    </div></div>`;
+      ${(co?.paymentMethods||[]).length?`<div class="qv-pay-footer">
+        <div class="qv-pay-title">Payment Details</div>
+        <div class="qv-pay-grid">${pmHTML}</div>
+      </div>`:''}
+      <div class="qv-sig-area">
+        <div class="qv-sig-block">
+          ${sp?.signatureImg
+            ? `<div style="height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px">
+                 <img src="${sp.signatureImg}" style="max-height:56px;max-width:180px;object-fit:contain" alt="signature">
+               </div>
+               <div style="border-bottom:1.5px solid #BBB;margin-bottom:5px"></div>`
+            : `<div class="qv-sig-line"></div>`}
+          <div class="qv-sig-lbl">Authorized Signature</div>
+          <div class="qv-sig-name">${sp?.name||co?.name||''}</div>
+        </div>
+      </div>
+    </div>`;
 
   // Store the rendered HTML and accent for use by renderPreviewPage + generatePDFBlob
   window._previewHTML    = docEl.innerHTML;
@@ -1468,30 +1471,60 @@ async function renderPreviewPage() {
     // Page N usable zone: [N*A4_H, N*A4_H + USABLE_H]
     // If block ends beyond N*A4_H + USABLE_H → add spacer.
 
-    const fitBlock = async (currentHtml, blockId) => {
-      const L = await measureLayout(currentHtml, accent);
-      const bTop = blockId === 'qv-block-1' ? L.b1Top : L.b2Top;
-      const bH   = blockId === 'qv-block-1' ? L.b1H   : L.b2H;
-      if (bH === 0) return currentHtml;
+    // ── Page-break logic ──────────────────────────────────────────
+    // MARGIN = 40px on all sides of every page.
+    // Content coordinate system: y=0 is the start of the content (after MARGIN top).
+    // Page N occupies content-y range: [N * A4_H, N * A4_H + USABLE_H]
+    // where USABLE_H = A4_H - MARGIN*2 = 994px (top+bottom margin inside each page).
+    //
+    // Rule 1: if block-1 doesn't fit remaining space on page 0 → push BOTH blocks to page 1.
+    // Rule 2: if block-1 fits page 0 but block-2 doesn't → push block-2 to next page.
+    // Rule 3: if both fit → no spacers needed.
+    //
+    // A spacer pushes a block to the next page.
+    // spacerH = (end of current page's usable zone - block start) + MARGIN (top of next page)
+    // This lands the block exactly MARGIN px from the top of the new page.
 
-      // Which A4 page does this block start on?
-      const pageIdx    = Math.floor(bTop / A4_H);
-      const pageTop    = pageIdx * A4_H;          // content-Y of this page's top margin
-      const pageBottom = pageTop + USABLE_H;      // content-Y of this page's bottom margin
-
-      if (bTop + bH > pageBottom) {
-        // Block overflows bottom margin → push to next page
-        // Spacer height = remaining space on this page + top margin of next page (= MARGIN)
-        const remaining = pageBottom - bTop;
-        const spacerH   = Math.max(remaining + MARGIN, MARGIN);
-        const spacer    = `<div style="height:${Math.round(spacerH)}px"></div>`;
-        return currentHtml.replace(`<div id="${blockId}">`, spacer + `<div id="${blockId}">`);
-      }
-      return currentHtml;
+    const needsNewPage = (blockTop, blockH, pageIdx) => {
+      const pageUsableEnd = (pageIdx * A4_H) + USABLE_H;
+      return (blockTop + blockH) > pageUsableEnd;
     };
 
-    html = await fitBlock(html, 'qv-block-1');
-    html = await fitBlock(html, 'qv-block-2');
+    const spacerBefore = (blockId, spacerH, currentHtml) => {
+      const sp = `<div style="height:${Math.round(spacerH)}px;display:block"></div>`;
+      return currentHtml.replace(`<div id="${blockId}">`, sp + `<div id="${blockId}">`);
+    };
+
+    const L1 = await measureLayout(html, accent);
+
+    // Determine which page each block is on (page 0 = first page)
+    const b1Page = Math.floor(L1.b1Top / A4_H);
+    const b2Page = Math.floor(L1.b2Top / A4_H);
+
+    if (L1.b1H > 0 && needsNewPage(L1.b1Top, L1.b1H, b1Page)) {
+      // Block 1 doesn't fit page 0 — push BOTH blocks to next page
+      const pageUsableEnd = (b1Page * A4_H) + USABLE_H;
+      const spacerH       = (pageUsableEnd - L1.b1Top) + MARGIN;
+      html = spacerBefore('qv-block-1', Math.max(spacerH, MARGIN), html);
+      // Block 2 will follow block 1 naturally on the new page — check it too after re-measure
+
+    } else if (L1.b2H > 0 && needsNewPage(L1.b2Top, L1.b2H, b2Page)) {
+      // Block 1 fits, but block 2 overflows its page → push block 2 to next page
+      const pageUsableEnd = (b2Page * A4_H) + USABLE_H;
+      const spacerH       = (pageUsableEnd - L1.b2Top) + MARGIN;
+      html = spacerBefore('qv-block-2', Math.max(spacerH, MARGIN), html);
+    }
+
+    // After adjustments, check block-2 again (it may have been pushed by block-1's spacer)
+    if (html !== htmlRaw) {
+      const L2    = await measureLayout(html, accent);
+      const b2P2  = Math.floor(L2.b2Top / A4_H);
+      if (L2.b2H > 0 && needsNewPage(L2.b2Top, L2.b2H, b2P2)) {
+        const pageUsableEnd = (b2P2 * A4_H) + USABLE_H;
+        const spacerH       = (pageUsableEnd - L2.b2Top) + MARGIN;
+        html = spacerBefore('qv-block-2', Math.max(spacerH, MARGIN), html);
+      }
+    }
 
     // ── Step 3: final measurement → page count ──
     const Lf     = await measureLayout(html, accent);
