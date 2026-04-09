@@ -1258,7 +1258,8 @@ function docPageCSS(accent) {
 
 // Render one full-height iframe, wait for layout, then return canvas slices as data URLs
 // This is the ONLY reliable approach — no JS measurement, browser does layout
-async function renderToCanvases(html, accent, nPages) {
+// Render at given scale and return page slices as data URLs
+async function renderToCanvases(html, accent, nPages, scale) {
   const totalH = nPages * A4_H;
 
   const ifr = document.createElement('iframe');
@@ -1274,26 +1275,25 @@ async function renderToCanvases(html, accent, nPages) {
   </body></html>`);
   d.close();
 
-  await new Promise(r => setTimeout(r, 600));
+  await new Promise(r => setTimeout(r, 500));
 
   const canvas = await html2canvas(d.body, {
-    scale: 2.5, useCORS: true, allowTaint: true,
+    scale, useCORS: true, allowTaint: true,
     backgroundColor: '#ffffff', logging: false,
     width: A4_W, height: totalH,
   });
 
   document.body.removeChild(ifr);
 
-  // Slice canvas into A4-height pages
+  const sliceH = Math.round(A4_H * scale);
   const slices = [];
   for (let p = 0; p < nPages; p++) {
     const sc = document.createElement('canvas');
     sc.width  = canvas.width;
-    sc.height = Math.round(A4_H * 2.5);
+    sc.height = sliceH;
     sc.getContext('2d').drawImage(
       canvas,
-      0, Math.round(p * A4_H * 2.5),
-      canvas.width, sc.height,
+      0, p * sliceH, canvas.width, sliceH,
       0, 0, sc.width, sc.height
     );
     slices.push(sc.toDataURL('image/png'));
@@ -1362,26 +1362,31 @@ async function renderPreviewPage() {
   outer.appendChild(loader);
 
   try {
-    const nPages  = await calcPageCount(html, accent);
-    const slices  = await renderToCanvases(html, accent, nPages);
+    const nPages = await calcPageCount(html, accent);
+    // Preview uses scale:1 for speed — PDF uses scale:2.5 for quality
+    const slices = await renderToCanvases(html, accent, nPages, 1);
 
     loader.remove();
     slices.forEach(dataUrl => {
       const wrap = document.createElement('div');
       wrap.className = 'prev-iframe-wrap';
-      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;flex-shrink:0;background:#fff`;
+      // wrap is the visual size after screen scaling
+      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;` +
+                           `flex-shrink:0;background:#fff;position:relative`;
 
       const img = document.createElement('img');
-      img.style.cssText = `width:${A4_W}px;height:${A4_H}px;display:block;` +
-        `transform:scale(${ss});transform-origin:top left`;
+      // img fills the wrap exactly — no transform needed
+      // The wrap is already the right scaled size (vW x vH)
+      img.style.cssText = `width:${vW}px;height:${vH}px;display:block;` +
+                          `object-fit:fill`;
       img.src = dataUrl;
       wrap.appendChild(img);
       outer.appendChild(wrap);
     });
 
-    window._previewPages = nPages;
-    window._previewSlices = slices;
+    window._previewPages      = nPages;
     window._previewAccentUsed = accent;
+    // Don't cache preview slices — PDF needs its own high-res render
 
   } finally {
     _renderLock = false;
@@ -1440,9 +1445,9 @@ async function generatePDFBlob() {
 
   try { await document.fonts.ready; } catch(e) {}
 
-  // Re-render to canvases (same function as preview — guaranteed identical)
+  // Always render at high resolution for PDF (preview uses lower res)
   const nPages = window._previewPages || await calcPageCount(html, accent);
-  const slices = window._previewSlices || await renderToCanvases(html, accent, nPages);
+  const slices = await renderToCanvases(html, accent, nPages, 2.5);
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
