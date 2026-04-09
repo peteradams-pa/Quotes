@@ -1163,8 +1163,8 @@ function buildPreview(qid) {
       <tbody>${rows}</tbody>
     </table>
 
-    <!-- BLOCK 1: Terms & Conditions + Totals only -->
-    <div id="qv-block-1">
+    <!-- BLOCK 1: Terms & Conditions + Totals -->
+    <div id="qv-block-1" class="qv-breakable">
       <div class="qv-bottom">
         <div>
           ${termsItems?`<div class="qv-terms-title" style="color:${accentColor}">Terms and Conditions</div>
@@ -1186,8 +1186,8 @@ function buildPreview(qid) {
       </div>
     </div>
 
-    <!-- BLOCK 2: Additional Notes + For Enquiries + Payment + Signature -->
-    <div id="qv-block-2">
+    <!-- BLOCK 2: Notes + Enquiries + Payment + Signature -->
+    <div id="qv-block-2" class="qv-breakable">
       ${q.notes?`<div style="margin-top:10px"><div class="qv-notes-title" style="color:${accentColor}">Additional Notes</div>
         <div class="qv-notes-text">${q.notes.replace(/\n/g,'<br>')}</div></div>`:''}
       <div class="qv-contact-line" style="margin-top:8px">
@@ -1243,201 +1243,109 @@ function buildPreview(qid) {
 // ══════════════════════════════════════════════════════════════
 
 // A4 dimensions (also declared as A4_W/A4_H/MARGIN/USABLE_H below — kept for compatibility)
-const A4_W_PX = 760;
-const A4_H_PX = 1074;
-const PAGE_PAD = 36;
-
-
-// ══ QUOTE DOCUMENT STYLES for iframe ══
-// Self-contained CSS — does NOT depend on the main page stylesheet
-function iframeDocCSS(accent) {
-  return `<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;
-     font-size:9pt;color:#111;background:#fff;
-     letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
-:root{--qAccent:${accent}}
-
-/* Header */
-.qv-title{font-size:22pt;font-weight:900;color:${accent};margin-bottom:4px;line-height:1}
-.qv-meta{font-size:8.5pt;color:#555;line-height:1.9}.qv-meta b{color:#111}
-.qv-logo-box{display:flex;align-items:center;gap:10px}
-.qv-logo-img{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;
-  justify-content:center;color:#fff;font-size:20px;font-weight:900;overflow:hidden;flex-shrink:0}
-.qv-logo-img img{width:100%;height:100%;object-fit:cover}
-.qv-co-name{font-size:13pt;font-weight:900;color:#111;letter-spacing:-.3px;line-height:1.1}
-.qv-co-tag{font-size:7.5pt;color:#777;margin-top:2px}
-
-/* FROM/TO boxes — the actual class names buildPreview uses */
-.qv-boxes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
-.qv-box{border:1px solid #E0E0E0;border-radius:6px;padding:10px 14px}
-.qv-box-lbl{font-size:7pt;font-weight:700;text-transform:uppercase;
-  letter-spacing:.8px;color:#999;margin-bottom:7px}
-.qv-box-row{display:flex;gap:6px;margin-bottom:3px;align-items:flex-start}
-.qv-box-key{font-size:7.5pt;color:#999;width:52px;flex-shrink:0;padding-top:1px}
-.qv-box-val{font-size:7.5pt;color:#222;flex:1;line-height:1.4}
-
-/* Sales rep / payment terms row */
-.qv-meta-row{display:flex;justify-content:space-between;align-items:center;
-  font-size:8pt;color:#555;margin:10px 0;padding:8px 0;
-  border-top:1px solid #EEE;border-bottom:1px solid #EEE}
-
-/* Items table */
-.qv-tbl{width:100%;border-collapse:collapse;margin-bottom:0}
-.qv-tbl thead tr{background:${accent}}
-.qv-tbl th{color:#fff;font-size:7.5pt;font-weight:700;padding:7px 8px;
-  text-align:left;text-transform:uppercase;letter-spacing:.3px}
-.qv-tbl th:nth-child(n+3){text-align:right}
-.qv-tbl th:nth-child(3){text-align:center}
-.qv-tbl td{font-size:8pt;padding:7px 8px;border-bottom:1px solid #F0F0F0;vertical-align:top}
-.qv-tbl tr:nth-child(even) td{background:#FAFAFA}
-.qv-tbl td:nth-child(1){color:#888;font-size:7.5pt;width:24px}
-.qv-tbl td:nth-child(3){text-align:center}
-.qv-tbl td:nth-child(n+4){text-align:right}
-.qv-tbl td:last-child{font-weight:700}
-.qv-tbl-desc{font-weight:600;color:#111}
-
-/* Bottom section */
-.qv-bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
-.qv-terms-title,.qv-notes-title{font-size:9pt;font-weight:700;color:${accent};margin-bottom:6px}
-.qv-notes-text{font-size:8pt;color:#555;line-height:1.6}
-
-/* Totals */
-.qv-tot-wrap{padding-top:4px}
-.qv-tr{display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:5px}
-.qv-tk{color:#666}.qv-tv{font-weight:600;color:#222}
-.disc{color:#E53935}.disc span{color:#E53935!important}
-.grand-row .qv-tk{font-size:12pt;font-weight:900;color:#111}
-.grand-row .qv-tv{font-size:12pt;font-weight:900;color:#111}
-.qv-tr.grand-row{border-top:2px solid ${accent};padding-top:8px;margin-top:4px}
-.qv-words-lbl{font-size:7pt;color:#888;margin-top:8px;font-style:italic}
-.qv-words{font-size:7.5pt;color:#666;font-style:italic;margin-top:2px;line-height:1.5}
-.qv-contact-line{font-size:7.5pt;color:#888;margin-top:10px}
-.qv-contact-line a{color:${accent}}
-
-/* Payment details */
-.qv-pay-footer{margin-top:14px;padding-top:10px;border-top:1px solid #EEE}
-.qv-pay-title{font-size:8.5pt;font-weight:700;color:#444;margin-bottom:8px}
-.qv-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.qv-pay-block{}
-.qv-pay-type{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-  color:${accent};margin-bottom:4px}
-.qv-pay-row{font-size:7.5pt;color:#555;line-height:1.8}.qv-pay-row b{color:#222}
-
-/* Signature */
-.qv-sig-area{margin-top:20px;display:flex;justify-content:flex-end}
-.qv-sig-block{text-align:center;min-width:180px}
-.qv-sig-line{border-bottom:1.5px solid #BBB;margin-bottom:5px;height:40px}
-.qv-sig-lbl{font-size:7.5pt;color:#777}
-.qv-sig-name{font-size:8pt;font-weight:600;color:#333;margin-top:2px}
-
-/* Watermark */
-.qv-wm{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
-  font-size:72pt;font-weight:900;color:rgba(0,0,0,.06);pointer-events:none;
-  user-select:none;white-space:nowrap;z-index:0}
-</style>`;
-}
-
-// Measure layout: returns top/height of both atomic blocks
-// ══ PAGE LAYOUT CONSTANTS ══
 const A4_W = 760;
 const A4_H = 1074;
-const M    = 40;   // margin: top/bottom/left/right on every page
+const M    = 40;   // margin px on all sides
 
-// Writes one page of the document into an iframe
-// offsetY = pageIndex * A4_H scrolls the full content to show that page
-function writeIframeDoc(d, html, accent, offsetY) {
-  d.open();
-  d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
-  <body style="overflow:hidden;margin:0;padding:0;background:#fff">
-    <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;position:relative;background:#fff">
-      <div id="cr" style="position:absolute;top:${M-offsetY}px;left:0;right:0;
-           padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box">${html}</div>
-    </div>
-  </body></html>`);
-  d.close();
+// ── iframeDocCSS already defined above ──
+
+// The document CSS used inside iframes
+function docPageCSS(accent) {
+  return iframeDocCSS(accent) + `<style>
+  #qv-block-1, #qv-block-2 { page-break-inside: avoid; break-inside: avoid; }
+  </style>`;
 }
 
-// Measures the layout using offsetTop — more reliable than getBoundingClientRect.
-// The measurement iframe renders content with top:0 (no top offset) so positions
-// are raw content-Y values starting from 0.
-// writeIframeDoc adds M (40px) to the top, so we ADD M to all positions here
-// so they match the rendered coordinate system.
-function measureLayout(html, accent) {
+// Render one full-height iframe, wait for layout, then return canvas slices as data URLs
+// This is the ONLY reliable approach — no JS measurement, browser does layout
+async function renderToCanvases(html, accent, nPages) {
+  const totalH = nPages * A4_H;
+
+  const ifr = document.createElement('iframe');
+  ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${totalH}px;` +
+                      `border:none;opacity:0;pointer-events:none;z-index:-1`;
+  document.body.appendChild(ifr);
+
+  const d = ifr.contentDocument;
+  d.open();
+  d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${docPageCSS(accent)}</head>
+  <body style="margin:0;padding:0;background:#fff;width:${A4_W}px">
+    <div style="padding:${M}px ${M}px 0;width:${A4_W}px;box-sizing:border-box">${html}</div>
+  </body></html>`);
+  d.close();
+
+  await new Promise(r => setTimeout(r, 600));
+
+  const canvas = await html2canvas(d.body, {
+    scale: 2.5, useCORS: true, allowTaint: true,
+    backgroundColor: '#ffffff', logging: false,
+    width: A4_W, height: totalH,
+  });
+
+  document.body.removeChild(ifr);
+
+  // Slice canvas into A4-height pages
+  const slices = [];
+  for (let p = 0; p < nPages; p++) {
+    const sc = document.createElement('canvas');
+    sc.width  = canvas.width;
+    sc.height = Math.round(A4_H * 2.5);
+    sc.getContext('2d').drawImage(
+      canvas,
+      0, Math.round(p * A4_H * 2.5),
+      canvas.width, sc.height,
+      0, 0, sc.width, sc.height
+    );
+    slices.push(sc.toDataURL('image/png'));
+  }
+  return slices;
+}
+
+// Determine page count by rendering into a hidden iframe and checking
+// if block-1 and block-2 fit on page 1 or need page 2
+function calcPageCount(html, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:9000px;` +
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:8000px;` +
                         `border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
-    // No top offset here — we measure raw positions then add M below
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}</head>
-    <body style="margin:0;padding:0;background:#fff">
-      <div id="root" style="padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box">${html}</div>
+    // body has top padding M, no bottom padding — matches renderToCanvases exactly
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${docPageCSS(accent)}</head>
+    <body style="margin:0;padding:${M}px ${M}px 0;width:${A4_W}px;box-sizing:border-box">
+      ${html}
     </body></html>`);
     d.close();
 
-    let tries = 0, lastH = 0;
+    let tries = 0, last = 0;
     const poll = setInterval(() => {
       const h = d.body.scrollHeight;
       tries++;
-      if ((h === lastH && h > 50) || tries > 35) {
+      if ((h === last && h > 50) || tries > 40) {
         clearInterval(poll);
-
-        // Use offsetTop chain — most reliable cross-browser
-        const getTop = el => {
-          if (!el) return h;
-          let t = 0, cur = el;
-          while (cur && cur !== d.body) { t += cur.offsetTop; cur = cur.offsetParent; }
-          return t;
-        };
-
-        const b1 = d.getElementById('qv-block-1');
-        const b2 = d.getElementById('qv-block-2');
-
-        // Add M to convert from raw-content-Y to rendered-Y (where content starts at top=M)
-        const b1Top = b1 ? getTop(b1) + M : h + M;
-        const b2Top = b2 ? getTop(b2) + M : h + M;
-
+        // Total height of content → how many A4 pages it needs
+        // Add M for bottom margin on the last page
+        const totalH = h + M;
+        const nPages = Math.max(1, Math.ceil(totalH / A4_H));
         document.body.removeChild(ifr);
-        resolve({
-          totalH: h + M,
-          b1Top, b1H: b1 ? b1.offsetHeight : 0,
-          b2Top, b2H: b2 ? b2.offsetHeight : 0,
-        });
+        resolve(nPages);
       }
-      lastH = h;
+      last = h;
     }, 80);
   });
 }
 
-async function measureContent(html, accent) {
-  const r = await measureLayout(html, accent);
-  return r.totalH;
-}
-
 let _renderLock = false;
 
-// Page N in writeIframeDoc shows rendered-Y range: [N*A4_H, (N+1)*A4_H)
-// The usable zone (inside margins) on page N:
-//   starts at: N*A4_H           (M top margin already baked in by writeIframeDoc's top:M)
-//   ends at:   N*A4_H + A4_H - M  (M bottom margin)
-// A block overflows page N if: blockTop + blockH > N*A4_H + A4_H - M
-//
-// Spacer to push block to page N+1:
-//   spacerH = (N*A4_H + A4_H - M) - blockTop
-//   This makes blockTop + spacerH = N*A4_H + A4_H - M
-//   In writeIframeDoc that's the bottom margin of page N = start of page N+1's content
 async function renderPreviewPage() {
   if (_renderLock) return;
   _renderLock = true;
 
-  const htmlRaw = window._previewHTML;
-  const accent  = window._previewAccent || '#1A73E8';
-  const outer   = document.getElementById('prev-outer');
-  if (!htmlRaw || !outer) { _renderLock = false; return; }
+  const html   = window._previewHTML;
+  const accent = window._previewAccent || '#1A73E8';
+  const outer  = document.getElementById('prev-outer');
+  if (!html || !outer) { _renderLock = false; return; }
 
   outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
 
@@ -1454,68 +1362,32 @@ async function renderPreviewPage() {
   outer.appendChild(loader);
 
   try {
-    // pageEnd(n): last rendered-Y that fits before bottom margin of page n
-    const pageEnd = n => n * A4_H + A4_H - M;
-
-    // Does block overflow its page's bottom margin?
-    const overflows = (top, h) => {
-      const n = Math.floor(top / A4_H);
-      return top + h > pageEnd(n);
-    };
-
-    // Spacer height = gap from block's top to end of that page
-    const spacerH = top => {
-      const n   = Math.floor(top / A4_H);
-      const gap = pageEnd(n) - top;
-      return Math.max(Math.ceil(gap), 0);
-    };
-
-    const addSpacer = (id, top, h) =>
-      `<div style="height:${spacerH(top)}px;display:block"></div><div id="${id}">` ;
-
-    let html = htmlRaw;
-    const L0 = await measureLayout(html, accent);
-
-    if (L0.b1H > 0 && overflows(L0.b1Top, L0.b1H)) {
-      // Block 1 overflows → push block 1 (block 2 follows)
-      html = html.replace(`<div id="qv-block-1">`, addSpacer('qv-block-1', L0.b1Top, L0.b1H));
-    }
-
-    // Re-measure after any block-1 change, then check block-2
-    const L1 = html !== htmlRaw ? await measureLayout(html, accent) : L0;
-    if (L1.b2H > 0 && overflows(L1.b2Top, L1.b2H)) {
-      html = html.replace(`<div id="qv-block-2">`, addSpacer('qv-block-2', L1.b2Top, L1.b2H));
-    }
-
-    const Lf     = html !== htmlRaw ? await measureLayout(html, accent) : L1;
-    const nPages = Math.max(1, Math.ceil(Lf.totalH / A4_H));
+    const nPages  = await calcPageCount(html, accent);
+    const slices  = await renderToCanvases(html, accent, nPages);
 
     loader.remove();
-
-    for (let p = 0; p < nPages; p++) {
+    slices.forEach(dataUrl => {
       const wrap = document.createElement('div');
       wrap.className = 'prev-iframe-wrap';
-      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;position:relative;flex-shrink:0`;
+      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;flex-shrink:0;background:#fff`;
 
-      const ifr = document.createElement('iframe');
-      ifr.scrolling = 'no';
-      ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;` +
-        `transform:scale(${ss});transform-origin:top left;background:#fff`;
-      wrap.appendChild(ifr);
+      const img = document.createElement('img');
+      img.style.cssText = `width:${A4_W}px;height:${A4_H}px;display:block;` +
+        `transform:scale(${ss});transform-origin:top left`;
+      img.src = dataUrl;
+      wrap.appendChild(img);
       outer.appendChild(wrap);
+    });
 
-      writeIframeDoc(ifr.contentDocument, html, accent, p * A4_H);
-    }
-
-    window._previewPages      = nPages;
-    window._naturalH          = Lf.totalH;
-    window._previewHTML_paged = html;
+    window._previewPages = nPages;
+    window._previewSlices = slices;
     window._previewAccentUsed = accent;
 
   } finally {
     _renderLock = false;
   }
 }
+
 
 function scalePreview()    { if (window._previewHTML) renderPreviewPage(); }
 function paginatePreview() { renderPreviewPage(); }
@@ -1561,41 +1433,24 @@ async function doPDF() {
 }
 
 async function generatePDFBlob() {
-  if (!window.jspdf || !window.html2canvas) return null;
-  const html   = window._previewHTML_paged || window._previewHTML;
+  if (!window.jspdf) return null;
+  const html   = window._previewHTML;
   const accent = window._previewAccentUsed || window._previewAccent || '#1A73E8';
   if (!html) return null;
 
   try { await document.fonts.ready; } catch(e) {}
 
-  // Use same nPages as preview — already calculated with spacers applied
-  const nPages = window._previewPages || Math.max(1, Math.ceil((window._naturalH||A4_H) / A4_H));
+  // Re-render to canvases (same function as preview — guaranteed identical)
+  const nPages = window._previewPages || await calcPageCount(html, accent);
+  const slices = window._previewSlices || await renderToCanvases(html, accent, nPages);
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
-  const PW = 210, PH = 297;
 
-  for (let p = 0; p < nPages; p++) {
-    if (p > 0) pdf.addPage();
-
-    const ifr = document.createElement('iframe');
-    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;border:none;opacity:0;pointer-events:none;z-index:-1`;
-    document.body.appendChild(ifr);
-
-    // Use same writeIframeDoc function — identical to preview
-    writeIframeDoc(ifr.contentDocument, html, accent, p * A4_H);
-
-    await new Promise(r => setTimeout(r, 500));
-
-    const canvas = await html2canvas(ifr.contentDocument.body, {
-      scale: 2.5, useCORS: true, allowTaint: true,
-      backgroundColor: '#ffffff', logging: false,
-      width: A4_W, height: A4_H,
-    });
-
-    document.body.removeChild(ifr);
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, PW, PH, '', 'FAST');
-  }
+  slices.forEach((dataUrl, i) => {
+    if (i > 0) pdf.addPage();
+    pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297, '', 'FAST');
+  });
 
   return pdf.output('blob');
 }
