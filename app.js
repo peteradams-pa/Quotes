@@ -1212,12 +1212,28 @@ function buildPreview(qid) {
       </div>
     </div>`;
 
-  // Store the rendered HTML and accent for use by renderPreviewPage + generatePDFBlob
-  window._previewHTML    = docEl.innerHTML;
-  window._previewAccent  = accentColor;
-  window._previewFont    = "'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+  // Extract the two bottom blocks as separate HTML strings
+  const b1El = docEl.querySelector('#qv-block-1');
+  const b2El = docEl.querySelector('#qv-block-2');
 
-  // Render the preview page (measure, scale-to-fit, display)
+  // Page 1 content = everything ABOVE qv-block-1
+  // Page 2 content (if needed) = block-1 + block-2
+  // We store all parts so renderPreviewPage can decide layout
+  window._previewAccent  = accentColor;
+
+  // Clone and extract content above block-1 (header + table)
+  const clone = docEl.cloneNode(true);
+  const cloneB1 = clone.querySelector('#qv-block-1');
+  const cloneB2 = clone.querySelector('#qv-block-2');
+
+  // aboveHTML = everything before block-1
+  if (cloneB1) cloneB1.remove();
+  if (cloneB2) cloneB2.remove();
+  window._previewAbove  = clone.innerHTML;        // header + table only
+  window._previewBlock1 = b1El ? b1El.outerHTML : '';  // terms + totals
+  window._previewBlock2 = b2El ? b2El.outerHTML : '';  // notes + payment + sig
+  window._previewHTML   = docEl.innerHTML;        // full HTML (legacy)
+
   setTimeout(() => renderPreviewPage(), 60);
 }
 
@@ -1255,7 +1271,6 @@ const M    = 40;
 let _renderLock = false;
 
 // Self-contained CSS for iframe preview/PDF pages
-// All qv-* styles extracted from index.html so iframes render correctly
 function iframeDocCSS(accent) {
   const ac = accent || '#1A73E8';
   return `<style>
@@ -1293,13 +1308,12 @@ html,body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;font-size:1
 .qv-tbl td:last-child{font-weight:700}
 .qv-tbl-desc{font-weight:600;color:#111}
 .qv-bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}
-.qv-terms-title{font-size:10pt;font-weight:700;color:${ac};margin-bottom:8px}
-.qv-notes-title{font-size:10pt;font-weight:700;color:${ac};margin-bottom:6px}
+.qv-terms-title,.qv-notes-title{font-size:10pt;font-weight:700;color:${ac};margin-bottom:8px}
 .qv-notes-text{font-size:8pt;color:#666;line-height:1.7}
 .qv-contact-line{font-size:8pt;color:#555;margin-top:10px;line-height:1.7}
 .qv-contact-line a{color:${ac};font-weight:600}
-.qv-tot-wrap{}
-.qv-tr{display:flex;justify-content:space-between;padding:5px 0;font-size:9.5pt;border-bottom:1px solid #F0F0F0}
+.qv-tot-wrap{}.qv-tr{display:flex;justify-content:space-between;padding:5px 0;
+  font-size:9.5pt;border-bottom:1px solid #F0F0F0}
 .qv-tr:last-child{border-bottom:none}
 .qv-tr.disc span:last-child{color:#E53935;font-weight:600}
 .qv-tr.grand-row{border-top:1.5px solid #E0E0E0;border-bottom:none;margin-top:6px;padding-top:8px}
@@ -1324,117 +1338,134 @@ html,body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;font-size:1
 </style>`;
 }
 
-function iframePageHTML(html, accent, pageIndex) {
-  // Each page is a fixed A4 viewport. The content div is positioned so that
-  // page N's content starts at the top of the viewport.
-  // Content top = M - (pageIndex * A4_H)  →  scrolls content up by pageIndex pages.
-  const offsetY = pageIndex * A4_H;
+
+// Build a complete standalone HTML document for one page
+// content = the HTML that goes inside the padded page container
+function makePageDoc(content, accent) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
   ${iframeDocCSS(accent)}
-  <style>
-    html,body{margin:0;padding:0;overflow:hidden;background:#fff}
-    #cr{position:absolute;top:${M - offsetY}px;left:0;right:0;
-        padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box}
-  </style>
+  <style>html,body{overflow:hidden}</style>
   </head>
-  <body>
-    <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;position:relative;background:#fff">
-      <div id="cr">${html}</div>
-    </div>
+  <body style="margin:0;padding:${M}px;width:${A4_W}px;box-sizing:border-box;background:#fff">
+    ${content}
   </body></html>`;
 }
 
-// Count pages by rendering content into a hidden iframe and reading scrollHeight
-function countPages(html, accent) {
+// Measure how tall content is when rendered at A4 width with margins
+function measureH(content, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:9000px;`+
-                        `border:none;opacity:0;pointer-events:none;z-index:-1`;
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:5000px;border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}
-    <style>html,body{margin:0;padding:0}</style></head>
-    <body><div id="root" style="padding:${M}px;width:${A4_W}px;box-sizing:border-box">
-      ${html}
-    </div></body></html>`);
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    ${iframeDocCSS(accent)}</head>
+    <body style="margin:0;padding:${M}px;width:${A4_W}px;box-sizing:border-box;background:#fff">
+      ${content}
+    </body></html>`);
     d.close();
     let tries = 0, last = 0;
     const t = setInterval(() => {
       const h = d.body.scrollHeight;
-      if ((h === last && h > 100) || ++tries > 30) {
+      if ((h === last && h > 20) || ++tries > 30) {
         clearInterval(t);
         document.body.removeChild(ifr);
-        resolve(Math.max(1, Math.ceil(h / A4_H)));
+        resolve(h);
       }
       last = h;
     }, 80);
   });
 }
 
+// Write a complete page into an iframe
+function writePageIframe(ifr, content, accent) {
+  const d = ifr.contentDocument;
+  d.open();
+  d.write(makePageDoc(content, accent));
+  d.close();
+}
+
+
 async function renderPreviewPage() {
   if (_renderLock) return;
   _renderLock = true;
 
-  const html   = window._previewHTML;
+  const above  = window._previewAbove  || '';
+  const block1 = window._previewBlock1 || '';
+  const block2 = window._previewBlock2 || '';
   const accent = window._previewAccent || '#1A73E8';
   const outer  = document.getElementById('prev-outer');
-  if (!html || !outer) { _renderLock = false; return; }
 
-  // Clear old pages
+  if (!above || !outer) { _renderLock = false; return; }
+
   outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
 
-  // Screen scale: fit 760px A4 into available width
   const avail = Math.max(outer.clientWidth - 4, 100);
   const ss    = Math.min(avail / A4_W, 1);
   const vW    = Math.round(A4_W * ss);
   const vH    = Math.round(A4_H * ss);
 
-  // Show loader
   const loader = document.createElement('div');
   loader.className = 'prev-iframe-wrap';
-  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#f5f5f5;`+
-    `display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px;flex-shrink:0`;
-  loader.textContent = 'Loading preview…';
+  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px;flex-shrink:0`;
+  loader.textContent = 'Loading…';
   outer.appendChild(loader);
 
   try {
-    const nPages = await countPages(html, accent);
+    // Measure how tall the header+table section is
+    const aboveH  = await measureH(above, accent);
+    const block1H = await measureH(block1, accent);
+    const block2H = await measureH(block2, accent);
+
+    // Usable content height per page (inside M margins top+bottom)
+    const USABLE = A4_H - M * 2;
+
+    // Decide page layout:
+    // - If above + block1 + block2 all fit on one page → 1 page
+    // - If above + block1 fit but not block2 → 2 pages (above+block1 | block2)
+    // - If above alone doesn't fit with block1 → 2 pages (above | block1+block2)
+    const totalH = aboveH + block1H + block2H;
+
+    let pages;
+    if (totalH <= USABLE) {
+      // Everything fits on one page
+      pages = [above + block1 + block2];
+    } else if (aboveH + block1H <= USABLE) {
+      // Above + block1 fit on page 1, block2 goes to page 2
+      pages = [above + block1, block2];
+    } else {
+      // Above alone fills page 1, block1+block2 go to page 2
+      pages = [above, block1 + block2];
+    }
+
     loader.remove();
 
-    for (let p = 0; p < nPages; p++) {
+    pages.forEach(content => {
       const wrap = document.createElement('div');
       wrap.className = 'prev-iframe-wrap';
-      // Wrapper is the VISUAL size (scaled). Iframe inside is full 760px, scaled via CSS.
-      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;`+
-                           `flex-shrink:0;position:relative;background:#fff`;
+      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;flex-shrink:0;position:relative`;
 
       const ifr = document.createElement('iframe');
       ifr.scrolling = 'no';
-      // The iframe is 760px wide and 1074px tall (full A4).
-      // We scale it down to fit the screen using transform — the wrapper clips it.
-      ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;`+
-                          `transform:scale(${ss});transform-origin:top left`;
+      ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;transform:scale(${ss});transform-origin:top left`;
       wrap.appendChild(ifr);
       outer.appendChild(wrap);
+      writePageIframe(ifr, content, accent);
+    });
 
-      // Write page content directly — instant, no canvas needed
-      const d = ifr.contentDocument;
-      d.open();
-      d.write(iframePageHTML(html, accent, p));
-      d.close();
-    }
-
-    window._previewPages      = nPages;
+    window._previewPages   = pages.length;
+    window._previewPagesArr = pages;
     window._previewAccentUsed = accent;
 
   } catch(e) {
     console.error('Preview error:', e);
-    loader.textContent = 'Preview failed — tap Save PDF to download';
+    loader.textContent = 'Preview failed';
   } finally {
     _renderLock = false;
   }
 }
+
 
 function scalePreview()    { if (window._previewHTML) renderPreviewPage(); }
 function paginatePreview() { renderPreviewPage(); }
@@ -1481,35 +1512,30 @@ async function doPDF() {
 
 async function generatePDFBlob() {
   if (!window.jspdf || !window.html2canvas) return null;
-  const html   = window._previewHTML;
   const accent = window._previewAccentUsed || window._previewAccent || '#1A73E8';
-  if (!html) return null;
+
+  // Use the same page content arrays built by renderPreviewPage
+  const pages = window._previewPagesArr;
+  if (!pages || !pages.length) return null;
 
   try { await document.fonts.ready; } catch(e) {}
 
-  const nPages = window._previewPages || await countPages(html, accent);
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
 
-  for (let p = 0; p < nPages; p++) {
+  for (let p = 0; p < pages.length; p++) {
     if (p > 0) pdf.addPage();
 
-    // Render each page into an off-screen iframe at full A4 resolution
     const ifr = document.createElement('iframe');
     ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;`+
                         `border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
+    writePageIframe(ifr, pages[p], accent);
 
-    const d = ifr.contentDocument;
-    d.open();
-    d.write(iframePageHTML(html, accent, p));
-    d.close();
-
-    // Wait for fonts and layout to settle
     await new Promise(r => setTimeout(r, 400));
 
     try {
-      const canvas = await html2canvas(d.body, {
+      const canvas = await html2canvas(ifr.contentDocument.body, {
         scale: 2.5, useCORS: true, allowTaint: true,
         backgroundColor: '#ffffff', logging: false,
         width: A4_W, height: A4_H,
