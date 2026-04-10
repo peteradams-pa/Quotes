@@ -1245,98 +1245,62 @@ function buildPreview(qid) {
 // A4 dimensions (also declared as A4_W/A4_H/MARGIN/USABLE_H below — kept for compatibility)
 const A4_W = 760;
 const A4_H = 1074;
-const M    = 40;   // margin px on all sides
+const M    = 40;
 
-// ── iframeDocCSS already defined above ──
+// ── Preview: simple iframe per page, content offset by scrolling ──────────
+// No html2canvas, no canvas slicing. Each page is a plain iframe showing
+// the quote HTML scrolled to reveal that page's content window.
+// This is instant, works offline, and looks identical on all devices.
 
-// The document CSS used inside iframes
-function docPageCSS(accent) {
-  return iframeDocCSS(accent) + `<style>
-  #qv-block-1, #qv-block-2 { page-break-inside: avoid; break-inside: avoid; }
-  </style>`;
+let _renderLock = false;
+
+function iframePageHTML(html, accent, pageIndex) {
+  // Each page is a fixed A4 viewport. The content div is positioned so that
+  // page N's content starts at the top of the viewport.
+  // Content top = M - (pageIndex * A4_H)  →  scrolls content up by pageIndex pages.
+  const offsetY = pageIndex * A4_H;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  ${iframeDocCSS(accent)}
+  <style>
+    html,body{margin:0;padding:0;overflow:hidden;background:#fff}
+    #cr{position:absolute;top:${M - offsetY}px;left:0;right:0;
+        padding:0 ${M}px;width:${A4_W}px;box-sizing:border-box}
+  </style>
+  </head>
+  <body>
+    <div style="width:${A4_W}px;height:${A4_H}px;overflow:hidden;position:relative;background:#fff">
+      <div id="cr">${html}</div>
+    </div>
+  </body></html>`;
 }
 
-// Render one full-height iframe, wait for layout, then return canvas slices as data URLs
-// This is the ONLY reliable approach — no JS measurement, browser does layout
-// Render at given scale and return page slices as data URLs
-async function renderToCanvases(html, accent, nPages, scale) {
-  const totalH = nPages * A4_H;
-
-  const ifr = document.createElement('iframe');
-  ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${totalH}px;` +
-                      `border:none;opacity:0;pointer-events:none;z-index:-1`;
-  document.body.appendChild(ifr);
-
-  const d = ifr.contentDocument;
-  d.open();
-  d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${docPageCSS(accent)}</head>
-  <body style="margin:0;padding:0;background:#fff;width:${A4_W}px">
-    <div style="padding:${M}px ${M}px 0;width:${A4_W}px;box-sizing:border-box">${html}</div>
-  </body></html>`);
-  d.close();
-
-  await new Promise(r => setTimeout(r, 500));
-
-  const canvas = await html2canvas(d.body, {
-    scale, useCORS: true, allowTaint: true,
-    backgroundColor: '#ffffff', logging: false,
-    width: A4_W, height: totalH,
-  });
-
-  document.body.removeChild(ifr);
-
-  const sliceH = Math.round(A4_H * scale);
-  const slices = [];
-  for (let p = 0; p < nPages; p++) {
-    const sc = document.createElement('canvas');
-    sc.width  = canvas.width;
-    sc.height = sliceH;
-    sc.getContext('2d').drawImage(
-      canvas,
-      0, p * sliceH, canvas.width, sliceH,
-      0, 0, sc.width, sc.height
-    );
-    slices.push(sc.toDataURL('image/png'));
-  }
-  return slices;
-}
-
-// Determine page count by rendering into a hidden iframe and checking
-// if block-1 and block-2 fit on page 1 or need page 2
-function calcPageCount(html, accent) {
+// Count pages by rendering content into a hidden iframe and reading scrollHeight
+function countPages(html, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:8000px;` +
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:9000px;`+
                         `border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
-    // body has top padding M, no bottom padding — matches renderToCanvases exactly
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${docPageCSS(accent)}</head>
-    <body style="margin:0;padding:${M}px ${M}px 0;width:${A4_W}px;box-sizing:border-box">
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${iframeDocCSS(accent)}
+    <style>html,body{margin:0;padding:0}</style></head>
+    <body><div id="root" style="padding:${M}px;width:${A4_W}px;box-sizing:border-box">
       ${html}
-    </body></html>`);
+    </div></body></html>`);
     d.close();
-
     let tries = 0, last = 0;
-    const poll = setInterval(() => {
+    const t = setInterval(() => {
       const h = d.body.scrollHeight;
-      tries++;
-      if ((h === last && h > 50) || tries > 40) {
-        clearInterval(poll);
-        // Total height of content → how many A4 pages it needs
-        // Add M for bottom margin on the last page
-        const totalH = h + M;
-        const nPages = Math.max(1, Math.ceil(totalH / A4_H));
+      if ((h === last && h > 100) || ++tries > 30) {
+        clearInterval(t);
         document.body.removeChild(ifr);
-        resolve(nPages);
+        resolve(Math.max(1, Math.ceil(h / A4_H)));
       }
       last = h;
     }, 80);
   });
 }
-
-let _renderLock = false;
 
 async function renderPreviewPage() {
   if (_renderLock) return;
@@ -1347,52 +1311,60 @@ async function renderPreviewPage() {
   const outer  = document.getElementById('prev-outer');
   if (!html || !outer) { _renderLock = false; return; }
 
+  // Clear old pages
   outer.querySelectorAll('.prev-iframe-wrap').forEach(el => el.remove());
 
+  // Screen scale: fit 760px A4 into available width
   const avail = Math.max(outer.clientWidth - 4, 100);
   const ss    = Math.min(avail / A4_W, 1);
   const vW    = Math.round(A4_W * ss);
   const vH    = Math.round(A4_H * ss);
 
+  // Show loader
   const loader = document.createElement('div');
   loader.className = 'prev-iframe-wrap';
-  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#f0f0f0;` +
-    `display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;flex-shrink:0`;
-  loader.textContent = 'Rendering…';
+  loader.style.cssText = `width:${vW}px;height:${vH}px;background:#f5f5f5;`+
+    `display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px;flex-shrink:0`;
+  loader.textContent = 'Loading preview…';
   outer.appendChild(loader);
 
   try {
-    const nPages = await calcPageCount(html, accent);
-    // Preview uses scale:1 for speed — PDF uses scale:2.5 for quality
-    const slices = await renderToCanvases(html, accent, nPages, 1);
-
+    const nPages = await countPages(html, accent);
     loader.remove();
-    slices.forEach(dataUrl => {
+
+    for (let p = 0; p < nPages; p++) {
       const wrap = document.createElement('div');
       wrap.className = 'prev-iframe-wrap';
-      // wrap is the visual size after screen scaling
-      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;` +
-                           `flex-shrink:0;background:#fff;position:relative`;
+      // Wrapper is the VISUAL size (scaled). Iframe inside is full 760px, scaled via CSS.
+      wrap.style.cssText = `width:${vW}px;height:${vH}px;overflow:hidden;`+
+                           `flex-shrink:0;position:relative;background:#fff`;
 
-      const img = document.createElement('img');
-      // img fills the wrap exactly — no transform needed
-      // The wrap is already the right scaled size (vW x vH)
-      img.style.cssText = `width:${vW}px;height:${vH}px;display:block;` +
-                          `object-fit:fill`;
-      img.src = dataUrl;
-      wrap.appendChild(img);
+      const ifr = document.createElement('iframe');
+      ifr.scrolling = 'no';
+      // The iframe is 760px wide and 1074px tall (full A4).
+      // We scale it down to fit the screen using transform — the wrapper clips it.
+      ifr.style.cssText = `width:${A4_W}px;height:${A4_H}px;border:none;display:block;`+
+                          `transform:scale(${ss});transform-origin:top left`;
+      wrap.appendChild(ifr);
       outer.appendChild(wrap);
-    });
+
+      // Write page content directly — instant, no canvas needed
+      const d = ifr.contentDocument;
+      d.open();
+      d.write(iframePageHTML(html, accent, p));
+      d.close();
+    }
 
     window._previewPages      = nPages;
     window._previewAccentUsed = accent;
-    // Don't cache preview slices — PDF needs its own high-res render
 
+  } catch(e) {
+    console.error('Preview error:', e);
+    loader.textContent = 'Preview failed — tap Save PDF to download';
   } finally {
     _renderLock = false;
   }
 }
-
 
 function scalePreview()    { if (window._previewHTML) renderPreviewPage(); }
 function paginatePreview() { renderPreviewPage(); }
@@ -1438,24 +1410,45 @@ async function doPDF() {
 }
 
 async function generatePDFBlob() {
-  if (!window.jspdf) return null;
+  if (!window.jspdf || !window.html2canvas) return null;
   const html   = window._previewHTML;
   const accent = window._previewAccentUsed || window._previewAccent || '#1A73E8';
   if (!html) return null;
 
   try { await document.fonts.ready; } catch(e) {}
 
-  // Always render at high resolution for PDF (preview uses lower res)
-  const nPages = window._previewPages || await calcPageCount(html, accent);
-  const slices = await renderToCanvases(html, accent, nPages, 2.5);
-
+  const nPages = window._previewPages || await countPages(html, accent);
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
 
-  slices.forEach((dataUrl, i) => {
-    if (i > 0) pdf.addPage();
-    pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297, '', 'FAST');
-  });
+  for (let p = 0; p < nPages; p++) {
+    if (p > 0) pdf.addPage();
+
+    // Render each page into an off-screen iframe at full A4 resolution
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:${A4_H}px;`+
+                        `border:none;opacity:0;pointer-events:none;z-index:-1`;
+    document.body.appendChild(ifr);
+
+    const d = ifr.contentDocument;
+    d.open();
+    d.write(iframePageHTML(html, accent, p));
+    d.close();
+
+    // Wait for fonts and layout to settle
+    await new Promise(r => setTimeout(r, 400));
+
+    try {
+      const canvas = await html2canvas(d.body, {
+        scale: 2.5, useCORS: true, allowTaint: true,
+        backgroundColor: '#ffffff', logging: false,
+        width: A4_W, height: A4_H,
+      });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, '', 'FAST');
+    } finally {
+      document.body.removeChild(ifr);
+    }
+  }
 
   return pdf.output('blob');
 }
