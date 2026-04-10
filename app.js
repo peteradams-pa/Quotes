@@ -1254,6 +1254,76 @@ const M    = 40;
 
 let _renderLock = false;
 
+// Self-contained CSS for iframe preview/PDF pages
+// All qv-* styles extracted from index.html so iframes render correctly
+function iframeDocCSS(accent) {
+  const ac = accent || '#1A73E8';
+  return `<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;font-size:10pt;
+  color:#111;background:#fff;-webkit-font-smoothing:antialiased}
+:root{--qAccent:${ac}}
+.qv-title{font-size:22pt;font-weight:900;color:${ac};margin-bottom:6px;line-height:1}
+.qv-meta{font-size:9pt;color:#555;line-height:1.9}.qv-meta b{color:#111}
+.qv-logo-box{display:flex;align-items:center;gap:10px}
+.qv-logo-img{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-size:20px;font-weight:900;overflow:hidden;flex-shrink:0}
+.qv-logo-img img{width:100%;height:100%;object-fit:cover}
+.qv-co-name{font-size:14pt;font-weight:900;color:#111;letter-spacing:-.3px;line-height:1.1}
+.qv-co-tag{font-size:8pt;color:#777;margin-top:2px}
+.qv-boxes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.qv-box{border:1px solid #E0E0E0;border-radius:6px;padding:12px 14px;background:#FAFAFA}
+.qv-box-lbl{font-size:8pt;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.qv-box-row{display:flex;gap:10px;margin-bottom:3px}
+.qv-box-key{font-size:8.5pt;color:#888;min-width:60px;flex-shrink:0}
+.qv-box-val{font-size:8.5pt;color:#111;font-weight:500;line-height:1.5}
+.qv-meta-row{display:flex;justify-content:space-between;font-size:8.5pt;color:#666;
+  padding:6px 0;border-top:1px solid #EEE;border-bottom:1px solid #EEE;margin-bottom:16px}
+.qv-meta-row span b{color:#111}
+.qv-tbl{width:100%;border-collapse:collapse;margin-bottom:0}
+.qv-tbl thead tr{background:${ac}}
+.qv-tbl th{color:#fff;padding:9px 10px;font-size:8.5pt;font-weight:700;
+  text-align:left;text-transform:uppercase;letter-spacing:.3px}
+.qv-tbl th:nth-child(n+3){text-align:right}.qv-tbl th:nth-child(3){text-align:center}
+.qv-tbl td{padding:8px 10px;font-size:9pt;border-bottom:1px solid #F0F0F0;vertical-align:middle}
+.qv-tbl tr:nth-child(even) td{background:#FAFAFA}
+.qv-tbl td:nth-child(1){color:#888;font-size:8pt;width:28px}
+.qv-tbl td:nth-child(3){text-align:center}.qv-tbl td:nth-child(n+4){text-align:right}
+.qv-tbl td:last-child{font-weight:700}
+.qv-tbl-desc{font-weight:600;color:#111}
+.qv-bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}
+.qv-terms-title{font-size:10pt;font-weight:700;color:${ac};margin-bottom:8px}
+.qv-notes-title{font-size:10pt;font-weight:700;color:${ac};margin-bottom:6px}
+.qv-notes-text{font-size:8pt;color:#666;line-height:1.7}
+.qv-contact-line{font-size:8pt;color:#555;margin-top:10px;line-height:1.7}
+.qv-contact-line a{color:${ac};font-weight:600}
+.qv-tot-wrap{}
+.qv-tr{display:flex;justify-content:space-between;padding:5px 0;font-size:9.5pt;border-bottom:1px solid #F0F0F0}
+.qv-tr:last-child{border-bottom:none}
+.qv-tr.disc span:last-child{color:#E53935;font-weight:600}
+.qv-tr.grand-row{border-top:1.5px solid #E0E0E0;border-bottom:none;margin-top:6px;padding-top:8px}
+.qv-tr.grand-row .qv-tk{font-size:12pt;font-weight:700;color:#111}
+.qv-tr.grand-row .qv-tv{font-size:13pt;font-weight:900;color:#111}
+.qv-tk{color:#555;font-size:9pt}.qv-tv{font-weight:600;color:#111}
+.qv-words-lbl{font-size:8pt;color:#999;margin-top:8px;margin-bottom:2px}
+.qv-words{font-size:8.5pt;color:#333;font-weight:500;font-style:italic;line-height:1.5}
+.qv-sig-area{margin-top:24px;display:flex;justify-content:flex-end}
+.qv-sig-block{text-align:center;min-width:180px}
+.qv-sig-line{border-bottom:1.5px solid #BBB;margin-bottom:5px;height:36px}
+.qv-sig-lbl{font-size:8pt;color:#777}.qv-sig-name{font-size:8.5pt;font-weight:600;color:#333;margin-top:2px}
+.qv-wm{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
+  font-size:60pt;font-weight:900;opacity:.05;pointer-events:none;color:#1A73E8;
+  white-space:nowrap;text-transform:uppercase;letter-spacing:6px}
+.qv-pay-footer{border-top:1px solid #E8E8E8;margin-top:20px;padding-top:14px}
+.qv-pay-title{font-size:9pt;font-weight:700;color:#444;margin-bottom:8px}
+.qv-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.qv-pay-type{font-size:7.5pt;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;color:${ac};margin-bottom:4px}
+.qv-pay-row{font-size:8pt;color:#555;line-height:1.8}.qv-pay-row b{color:#222}
+</style>`;
+}
+
 function iframePageHTML(html, accent, pageIndex) {
   // Each page is a fixed A4 viewport. The content div is positioned so that
   // page N's content starts at the top of the viewport.
