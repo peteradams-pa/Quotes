@@ -1152,11 +1152,11 @@ function buildPreview(qid) {
     <table class="qv-tbl" style="--qAccent:${accentColor}">
       <thead>
         <tr>
-          <th style="width:24px">Item #</th>
-          <th>Item Description</th>
-          <th style="width:48px;text-align:center">Qty.</th>
+          <th style="width:22px">#</th>
+          <th>Description</th>
+          <th style="width:44px;text-align:center">Qty</th>
           <th style="width:100px;text-align:right">Rate (${sym()})</th>
-          <th style="width:54px;text-align:right">Disc</th>
+          <th style="width:46px;text-align:right">Disc</th>
           <th style="width:105px;text-align:right">Amount (${sym()})</th>
         </tr>
       </thead>
@@ -1271,10 +1271,33 @@ const M    = 40;
 let _renderLock = false;
 
 // Self-contained CSS for iframe preview/PDF pages
+// Extracts @font-face rules already loaded in the main document
+// so iframes use cached fonts — works offline without @import
+function getLoadedFontFaces() {
+  try {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      try {
+        for (const rule of sheet.cssRules) {
+          if (rule.type === CSSRule.FONT_FACE_RULE) {
+            rules.push(rule.cssText);
+          }
+        }
+      } catch(e) {} // cross-origin sheets throw
+    }
+    return rules.join('\n');
+  } catch(e) { return ''; }
+}
+
 function iframeDocCSS(accent) {
   const ac = accent || '#1A73E8';
+  // Use already-loaded font-face rules (works offline) with fallback @import
+  const fontFaces = getLoadedFontFaces();
+  const fontCSS = fontFaces
+    ? fontFaces
+    : "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');";
   return `<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+${fontCSS}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;font-size:10pt;
   color:#111;background:#fff;-webkit-font-smoothing:antialiased}
@@ -1298,10 +1321,10 @@ html,body{font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;font-size:1
 .qv-meta-row span b{color:#111}
 .qv-tbl{width:100%;border-collapse:collapse;margin-bottom:0}
 .qv-tbl thead tr{background:${ac}}
-.qv-tbl th{color:#fff;padding:9px 10px;font-size:8.5pt;font-weight:700;
-  text-align:left;text-transform:uppercase;letter-spacing:.3px}
+.qv-tbl th{color:#fff;padding:6px 10px;font-size:8.5pt;font-weight:700;
+  text-align:left;white-space:nowrap}
 .qv-tbl th:nth-child(n+3){text-align:right}.qv-tbl th:nth-child(3){text-align:center}
-.qv-tbl td{padding:8px 10px;font-size:9pt;border-bottom:1px solid #F0F0F0;vertical-align:middle}
+.qv-tbl td{padding:6px 10px;font-size:9pt;border-bottom:1px solid #F0F0F0;vertical-align:middle}
 .qv-tbl tr:nth-child(even) td{background:#FAFAFA}
 .qv-tbl td:nth-child(1){color:#888;font-size:8pt;width:28px}
 .qv-tbl td:nth-child(3){text-align:center}.qv-tbl td:nth-child(n+4){text-align:right}
