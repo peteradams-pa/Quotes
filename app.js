@@ -7,7 +7,7 @@
 let DB = {
   companies: [], customers: [], inventory: [], quotes: [], salespeople: [],
   settings: {
-    quotePrefix:'QMS-', quoteValidDays:30, followUpDays:7,
+    quotePrefix:'QMS-', invoicePrefix:'INV-', quoteValidDays:30, followUpDays:7,
     taxRate:0.16, taxLabel:'VAT', currencySymbol:'KSh',
     minMargin:.20, warnMargin:.25,
     activeCompanyId:null,
@@ -389,7 +389,7 @@ function qItemHTML(q) {
   const od   = isOverdue(q);
   return `<div class="qi" onclick="openQD('${q.id}')">
     <div class="qi-top">
-      <span class="qi-id">${q.id}</span>
+      <span class="qi-id">${q.isInvoice ? q.invoiceId : q.id}</span>${q.isInvoice?'<span class="chip cs-Won" style="font-size:10px;margin-left:4px">INV</span>':''}
       <span class="qi-amt">${fmt(tots.total)}</span>
     </div>
     <div class="qi-co">${cust?.company||'Unknown Customer'}</div>
@@ -454,7 +454,12 @@ function openQD(qid) {
       </div>
       <span class="${chipCls(q.status)}" style="font-size:13px;padding:5px 12px">${q.status}</span>
     </div>
-    <div class="db2"><div class="dh2"><span class="dht">Quote Info</span></div>
+    <div class="db2"><div class="dh2">
+      <span class="dht">${q.isInvoice ? 'Invoice Info' : 'Quote Info'}</span>
+      ${q.isInvoice ? `<span class="chip cs-Won" style="font-size:11px">INVOICE ${q.invoiceId}</span>` : ''}
+    </div>
+      ${q.isInvoice ? `<div class="dr"><span class="dk">Invoice ID</span><span class="dv" style="font-weight:700;color:var(--S)">${q.invoiceId}</span></div>
+      <div class="dr"><span class="dk">Invoice Date</span><span class="dv">${fmtDate(q.invoiceDate)}</span></div>` : ''}
       <div class="dr"><span class="dk">Company</span><span class="dv">${co?.name||'—'}</span></div>
       <div class="dr"><span class="dk">Customer</span><span class="dv">${cust?.company||'—'}</span></div>
       <div class="dr"><span class="dk">Contact</span><span class="dv">${cust?.contact||'—'} · ${cust?.phone||'—'}</span></div>
@@ -510,6 +515,17 @@ function openQAct() {
       <div class="si-ic"><span class="material-icons-round">content_copy</span></div>
       <div class="si-tx"><div class="si-m">Duplicate Quote</div></div>
     </div>
+    ${q.isInvoice
+      ? `<div class="si" onclick="revertToQuote('${q.id}');closeDlg('dlg-qact')">
+          <div class="si-ic" style="background:#E8F5E920;color:#388E3C"><span class="material-icons-round">undo</span></div>
+          <div class="si-tx"><div class="si-m">Revert to Quote</div>
+            <div class="si-s">Remove invoice status</div></div>
+        </div>`
+      : `<div class="si" onclick="convertToInvoice('${q.id}');closeDlg('dlg-qact')">
+          <div class="si-ic" style="background:#E8F5E920;color:#388E3C"><span class="material-icons-round">receipt</span></div>
+          <div class="si-tx"><div class="si-m">Convert to Invoice</div>
+            <div class="si-s">Generates Invoice ID</div></div>
+        </div>`}
     ${others.map(s=>`<div class="si" onclick="setQStat('${q.id}','${s}')">
       <div class="si-ic"><span class="material-icons-round">label</span></div>
       <div class="si-tx"><div class="si-m">Mark as ${s}</div></div>
@@ -539,6 +555,44 @@ function editQuoteFromAction(qid) {
   closeDlg('dlg-qd');
   // Small delay to let dialogs close before opening editor
   setTimeout(() => openQE(qid), 120);
+}
+
+function convertToInvoice(qid) {
+  const q = DB.quotes.find(x => x.id === qid);
+  if (!q) return;
+  if (q.isInvoice) { snack('Already an invoice'); return; }
+
+  // Generate invoice ID: INV-YYYY-NNN
+  const yr   = new Date().getFullYear();
+  const pfx  = (DB.settings.invoicePrefix || 'INV-') + yr + '-';
+  const nums = DB.quotes.filter(x => x.invoiceId && x.invoiceId.startsWith(pfx))
+                        .map(x => parseInt(x.invoiceId.replace(pfx, '')) || 0);
+  const next = (nums.length ? Math.max(...nums) : 0) + 1;
+  const invoiceId = pfx + String(next).padStart(3, '0');
+
+  q.isInvoice = true;
+  q.invoiceId = invoiceId;
+  q.invoiceDate = new Date().toISOString().slice(0, 10);
+
+  save();
+  closeDlg('dlg-qact');
+  closeDlg('dlg-qd');
+  snack(`Converted to Invoice ${invoiceId}`);
+  renderPage(curPage);
+}
+
+function revertToQuote(qid) {
+  const q = DB.quotes.find(x => x.id === qid);
+  if (!q) return;
+  confirmAct('Revert this invoice back to a quote?', () => {
+    q.isInvoice  = false;
+    q.invoiceId  = null;
+    q.invoiceDate = null;
+    save();
+    closeDlg('dlg-qd');
+    renderPage(curPage);
+    snack('Reverted to quote');
+  });
 }
 
 function setQStat(qid, s) {
@@ -1103,11 +1157,11 @@ function buildPreview(qid) {
     <!-- HEADER ROW -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
       <div>
-        <div class="qv-title" style="color:${accentColor}">Quotation</div>
+        <div class="qv-title" style="color:${accentColor}">${q.isInvoice ? 'Invoice' : 'Quotation'}</div>
         <div class="qv-meta">
-          Quotation&nbsp;# &nbsp;<b>${q.id}</b><br>
-          Quotation Date &nbsp;<b>${fmtDate(q.date)}</b><br>
-          Valid Until &nbsp;<b>${fmtDate(q.validUntil)}</b>
+          ${q.isInvoice ? 'Invoice' : 'Quotation'}&nbsp;# &nbsp;<b>${q.isInvoice ? q.invoiceId : q.id}</b><br>
+          ${q.isInvoice ? 'Invoice Date' : 'Quotation Date'} &nbsp;<b>${fmtDate(q.isInvoice ? q.invoiceDate : q.date)}</b><br>
+          ${q.isInvoice ? 'Quote Ref' : 'Valid Until'} &nbsp;<b>${q.isInvoice ? q.id : fmtDate(q.validUntil)}</b>
           &nbsp;&nbsp;<span style="background:${stBg[q.status]||'#F5F5F5'};color:${stCol[q.status]||'#333'};
             padding:2px 9px;border-radius:999px;font-size:8pt;font-weight:700">${q.status.toUpperCase()}</span>
         </div>
@@ -1499,7 +1553,8 @@ function buildFileName(q) {
   const cust = getCust(q.customerId);
   const name = (cust?.company||'Client').replace(/[^\w\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-');
   const ver  = (DB.settings.dlIncludeVersion !== false && q.version) ? '_v'+q.version : '';
-  return `${name}_${q.id}${ver}.pdf`;
+  const docId = q.isInvoice ? q.invoiceId : q.id;
+  return `${name}_${docId}${ver}.pdf`;
 }
 
 function doPDFById(qid) {
