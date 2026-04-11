@@ -456,10 +456,10 @@ function openQD(qid) {
     </div>
     <div class="db2"><div class="dh2">
       <span class="dht">${q.isInvoice ? 'Invoice Info' : 'Quote Info'}</span>
-      ${q.isInvoice ? `<span class="chip cs-Won" style="font-size:11px">INVOICE ${q.invoiceId}</span>` : ''}
+      ${q.isInvoice ? '<span class="chip cs-Won" style="font-size:11px">INVOICE '+q.invoiceId+'</span>' : ''}
     </div>
-      ${q.isInvoice ? `<div class="dr"><span class="dk">Invoice ID</span><span class="dv" style="font-weight:700;color:var(--S)">${q.invoiceId}</span></div>
-      <div class="dr"><span class="dk">Invoice Date</span><span class="dv">${fmtDate(q.invoiceDate)}</span></div>` : ''}
+      ${q.isInvoice ? '<div class="dr"><span class="dk">Invoice ID</span><span class="dv" style="font-weight:700;color:var(--S)">'+q.invoiceId+'</span></div>'
+        +'<div class="dr"><span class="dk">Invoice Date</span><span class="dv">'+fmtDate(q.invoiceDate)+'</span></div>' : ''}
       <div class="dr"><span class="dk">Company</span><span class="dv">${co?.name||'—'}</span></div>
       <div class="dr"><span class="dk">Customer</span><span class="dv">${cust?.company||'—'}</span></div>
       <div class="dr"><span class="dk">Contact</span><span class="dv">${cust?.contact||'—'} · ${cust?.phone||'—'}</span></div>
@@ -506,6 +506,10 @@ function openQD(qid) {
 function openQAct() {
   const q = DB.quotes.find(x=>x.id===curQID); if (!q) return;
   const others = ['Draft','Sent','Won','Lost','Expired'].filter(s=>s!==q.status);
+  const qid = q.id;
+  const invHtml = q.isInvoice
+    ? `<div class="si" onclick="revertToQuote('${qid}');closeDlg('dlg-qact')"><div class="si-ic" style="background:#E8F5E920;color:#388E3C"><span class="material-icons-round">undo</span></div><div class="si-tx"><div class="si-m">Revert to Quote</div><div class="si-s">Remove invoice status</div></div></div>`
+    : `<div class="si" onclick="convertToInvoice('${qid}');closeDlg('dlg-qact')"><div class="si-ic" style="background:#E8F5E920;color:#388E3C"><span class="material-icons-round">receipt</span></div><div class="si-tx"><div class="si-m">Convert to Invoice</div><div class="si-s">Generates Invoice ID</div></div></div>`;
   document.getElementById('qact-body').innerHTML = `
     <div class="si" onclick="editQuoteFromAction('${q.id}')">
       <div class="si-ic"><span class="material-icons-round">edit</span></div>
@@ -515,17 +519,7 @@ function openQAct() {
       <div class="si-ic"><span class="material-icons-round">content_copy</span></div>
       <div class="si-tx"><div class="si-m">Duplicate Quote</div></div>
     </div>
-    ${q.isInvoice
-      ? `<div class="si" onclick="revertToQuote('${q.id}');closeDlg('dlg-qact')">
-          <div class="si-ic" style="background:#E8F5E920;color:#388E3C"><span class="material-icons-round">undo</span></div>
-          <div class="si-tx"><div class="si-m">Revert to Quote</div>
-            <div class="si-s">Remove invoice status</div></div>
-        </div>`
-      : `<div class="si" onclick="convertToInvoice('${q.id}');closeDlg('dlg-qact')">
-          <div class="si-ic" style="background:#E8F5E920;color:#388E3C"><span class="material-icons-round">receipt</span></div>
-          <div class="si-tx"><div class="si-m">Convert to Invoice</div>
-            <div class="si-s">Generates Invoice ID</div></div>
-        </div>`}
+    ${invHtml}
     ${others.map(s=>`<div class="si" onclick="setQStat('${q.id}','${s}')">
       <div class="si-ic"><span class="material-icons-round">label</span></div>
       <div class="si-tx"><div class="si-m">Mark as ${s}</div></div>
@@ -1428,24 +1422,25 @@ function makePageDoc(content, accent) {
   </body></html>`;
 }
 
-// Measure how tall content is when rendered at A4 width with margins
+// Measure pure content height — NO body padding so heights can be summed accurately.
+// The page margin (M*2) is accounted for separately in the layout decision.
 function measureH(content, accent) {
   return new Promise(resolve => {
     const ifr = document.createElement('iframe');
-    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W}px;height:5000px;border:none;opacity:0;pointer-events:none;z-index:-1`;
+    ifr.style.cssText = `position:fixed;top:0;left:0;width:${A4_W - M*2}px;height:5000px;border:none;opacity:0;pointer-events:none;z-index:-1`;
     document.body.appendChild(ifr);
     const d = ifr.contentDocument;
     d.open();
     d.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
     ${iframeDocCSS(accent)}</head>
-    <body style="margin:0;padding:${M}px;width:${A4_W}px;box-sizing:border-box;background:#fff">
+    <body style="margin:0;padding:0;width:${A4_W - M*2}px;box-sizing:border-box;background:#fff">
       ${content}
     </body></html>`);
     d.close();
     let tries = 0, last = 0;
     const t = setInterval(() => {
       const h = d.body.scrollHeight;
-      if ((h === last && h > 20) || ++tries > 30) {
+      if ((h === last && h > 0) || ++tries > 30) {
         clearInterval(t);
         document.body.removeChild(ifr);
         resolve(h);
@@ -1490,29 +1485,27 @@ async function renderPreviewPage() {
   outer.appendChild(loader);
 
   try {
-    // Measure how tall the header+table section is
-    const aboveH  = await measureH(above, accent);
-    const block1H = await measureH(block1, accent);
-    const block2H = await measureH(block2, accent);
+    // Measure pure content heights (no padding — see measureH)
+    const aboveH  = await measureH(above,  accent);
+    const block1H = block1 ? await measureH(block1, accent) : 0;
+    const block2H = block2 ? await measureH(block2, accent) : 0;
 
-    // Usable content height per page (inside M margins top+bottom)
-    const USABLE = A4_H - M * 2;
+    // Usable content height per page = A4 minus top+bottom margins
+    const USABLE = A4_H - M * 2;  // 1074 - 80 = 994px
 
-    // Decide page layout:
-    // - If above + block1 + block2 all fit on one page → 1 page
-    // - If above + block1 fit but not block2 → 2 pages (above+block1 | block2)
-    // - If above alone doesn't fit with block1 → 2 pages (above | block1+block2)
-    const totalH = aboveH + block1H + block2H;
+    // Layout decision (pure content heights, no padding double-counting):
+    // - everything fits on one page → 1 page
+    // - above+block1 fit page 1, block2 goes to page 2
+    // - above fills page 1, blocks go to page 2
+    const allH   = aboveH + block1H + block2H;
+    const p1H    = aboveH + block1H;
 
     let pages;
-    if (totalH <= USABLE) {
-      // Everything fits on one page
+    if (allH <= USABLE) {
       pages = [above + block1 + block2];
-    } else if (aboveH + block1H <= USABLE) {
-      // Above + block1 fit on page 1, block2 goes to page 2
+    } else if (p1H <= USABLE) {
       pages = [above + block1, block2];
     } else {
-      // Above alone fills page 1, block1+block2 go to page 2
       pages = [above, block1 + block2];
     }
 
