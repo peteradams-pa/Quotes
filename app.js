@@ -39,54 +39,101 @@ const ACCENTS = [
 ];
 
 // ── STORAGE — IndexedDB (no size limit, handles 500+ products) ──────
-// Falls back to localStorage if IndexedDB unavailable
-const IDB_NAME = 'QuotesPWA';
+// ── STORAGE: IndexedDB with per-collection keys ─────────────────────────
+// Each collection is stored as its own IDB record so no single write
+// blocks on the full dataset. Supports unlimited data (quota = disk space).
+const IDB_NAME  = 'QuotesPWA';
 const IDB_STORE = 'data';
-const IDB_KEY   = 'db';
-let   _idb      = null;   // cached IDB connection
+let   _idb      = null;
+
+// Collections stored separately to keep writes small and fast
+const IDB_KEYS = ['inventory','quotes','customers','companies','salespeople','settings'];
 
 function openIDB() {
   return new Promise((resolve, reject) => {
     if (_idb) { resolve(_idb); return; }
-    const req = indexedDB.open(IDB_NAME, 1);
+    const req = indexedDB.open(IDB_NAME, 2); // v2 — per-collection keys
     req.onupgradeneeded = e => {
-      e.target.result.createObjectStore(IDB_STORE);
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
     };
     req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
     req.onerror   = e => reject(e.target.error);
   });
 }
 
-// save() — async write to IndexedDB, with localStorage mirror for resilience
+// save() — writes only the collections that exist in DB
+// Each collection is its own IDB record (small, fast writes)
 function save() {
-  const json = JSON.stringify(DB);
-  // Always try localStorage as a quick backup (may fail silently if >5MB)
-  try { localStorage.setItem('qpwa3', json); } catch(e) {}
-  // Primary: IndexedDB (no size limit)
   openIDB().then(db => {
-    const tx  = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).put(json, IDB_KEY);
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const st = tx.objectStore(IDB_STORE);
+    IDB_KEYS.forEach(k => {
+      if (DB[k] !== undefined) {
+        st.put(JSON.stringify(DB[k]), 'col_' + k);
+      }
+    });
+    // Also save settings as part of collections
+    st.put(JSON.stringify(DB.settings || {}), 'col_settings');
   }).catch(e => console.warn('IDB save failed:', e));
+
+  // localStorage backup — may silently fail if >5 MB, that is fine
+  try { localStorage.setItem('qpwa3', JSON.stringify(DB)); } catch(e) {}
 }
 
-// load() — returns a Promise; reads IndexedDB first, then localStorage fallback
+// load() — reads per-collection keys, falls back to old single-blob format
 function load() {
   return new Promise(resolve => {
-    openIDB()
-      .then(db => {
-        const tx  = db.transaction(IDB_STORE, 'readonly');
-        const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
-        req.onsuccess = e => {
-          const raw = e.target.result;
-          if (raw) {
-            try { DB = JSON.parse(raw); resolve(); return; } catch(err) {}
-          }
-          // IDB empty — try localStorage migration
-          loadFromLocalStorage(resolve);
-        };
-        req.onerror = () => loadFromLocalStorage(resolve);
-      })
-      .catch(() => loadFromLocalStorage(resolve));
+    openIDB().then(db => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const st = tx.objectStore(IDB_STORE);
+
+      // Try to read the first collection key to detect format
+      const probe = st.get('col_inventory');
+      probe.onsuccess = () => {
+        if (probe.result !== undefined) {
+          // New per-collection format — read all keys
+          const gets = IDB_KEYS.map(k => new Promise(res => {
+            const r = tx.objectStore(IDB_STORE).get('col_' + k);
+            r.onsuccess = () => res([k, r.result]);
+            r.onerror   = () => res([k, null]);
+          }));
+          Promise.all(gets).then(pairs => {
+            pairs.forEach(([k, v]) => {
+              if (v) {
+                try { DB[k] = JSON.parse(v); } catch(e) {}
+              }
+            });
+            if (!DB.quotes) DB.quotes = [];
+            if (!DB.inventory) DB.inventory = [];
+            if (!DB.customers) DB.customers = [];
+            if (!DB.companies) DB.companies = [];
+            if (!DB.salespeople) DB.salespeople = [];
+            if (!DB.settings) DB.settings = {};
+            resolve();
+          });
+        } else {
+          // Old single-blob format — read and migrate
+          const old = tx.objectStore(IDB_STORE).get('db');
+          old.onsuccess = () => {
+            if (old.result) {
+              try {
+                DB = JSON.parse(old.result);
+                // Migrate to per-collection format
+                save();
+              } catch(e) { loadFromLocalStorage(resolve); return; }
+              resolve();
+            } else {
+              loadFromLocalStorage(resolve);
+            }
+          };
+          old.onerror = () => loadFromLocalStorage(resolve);
+        }
+      };
+      probe.onerror = () => loadFromLocalStorage(resolve);
+    }).catch(() => loadFromLocalStorage(resolve));
   });
 }
 
@@ -95,17 +142,11 @@ function loadFromLocalStorage(resolve) {
     const r = localStorage.getItem('qpwa3');
     if (r) {
       DB = JSON.parse(r);
-      // Migrate: write to IDB so future loads use IDB
-      openIDB().then(db => {
-        const tx = db.transaction(IDB_STORE, 'readwrite');
-        tx.objectStore(IDB_STORE).put(r, IDB_KEY);
-      }).catch(()=>{});
+      save(); // migrate to IDB
     } else {
       seed();
     }
-  } catch(e) {
-    seed();
-  }
+  } catch(e) { seed(); }
   resolve();
 }
 
@@ -1156,8 +1197,6 @@ function buildPreview(qid) {
           ${q.isInvoice ? 'Invoice' : 'Quotation'}&nbsp;# &nbsp;<b>${q.isInvoice ? q.invoiceId : q.id}</b><br>
           ${q.isInvoice ? 'Invoice Date' : 'Quotation Date'} &nbsp;<b>${fmtDate(q.isInvoice ? q.invoiceDate : q.date)}</b><br>
           ${q.isInvoice ? 'Quote Ref' : 'Valid Until'} &nbsp;<b>${q.isInvoice ? q.id : fmtDate(q.validUntil)}</b>
-          &nbsp;&nbsp;<span style="background:${stBg[q.status]||'#F5F5F5'};color:${stCol[q.status]||'#333'};
-            padding:2px 9px;border-radius:999px;font-size:8pt;font-weight:700">${q.status.toUpperCase()}</span>
         </div>
       </div>
       <div class="qv-logo-box">
