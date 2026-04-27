@@ -1,109 +1,40 @@
-/* Quotes PWA — Service Worker v4 — Full offline with aggressive font caching */
-const CACHE_STATIC = 'quotes-static-v4';
-const CACHE_FONTS  = 'quotes-fonts-v4';
-
-const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './app.js',
-  './manifest.json',
-  './icon-192.svg',
+const CACHE = 'quotes-pwa-v3';
+const ASSETS = [
+  './', './index.html', './app.js', './manifest.json',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap',
+  'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_STATIC)
-      .then(c => c.addAll(STATIC_ASSETS).catch(err => console.warn('SW static cache partial:', err)))
+    caches.open(CACHE).then(c => c.addAll(ASSETS).catch(err => console.warn('Cache partial:', err)))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_STATIC && k !== CACHE_FONTS).map(k => caches.delete(k))
-      )
-    )
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
-
-  // Fonts from Google Fonts CDN (CSS + actual woff2 files) — cache-first
-  if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
-    e.respondWith(
-      caches.open(CACHE_FONTS).then(async cache => {
-        const cached = await cache.match(e.request);
-        if (cached) return cached;
-        try {
-          // Use no-cors for font files so they can be cached
-          const req = url.includes('fonts.gstatic.com')
-            ? new Request(e.request, { mode: 'cors' })
-            : e.request;
-          const response = await fetch(req);
-          if (response.status === 200) {
-            cache.put(e.request, response.clone());
-          }
-          return response;
-        } catch {
-          return new Response('', { status: 503 });
-        }
-      })
-    );
-    return;
-  }
-
-  // Icons from Google — cache-first
-  if (url.includes('googleapis.com')) {
-    e.respondWith(
-      caches.open(CACHE_FONTS).then(async cache => {
-        const cached = await cache.match(e.request);
-        if (cached) return cached;
-        try {
-          const response = await fetch(e.request);
-          if (response.status === 200) cache.put(e.request, response.clone());
-          return response;
-        } catch {
-          return cached || new Response('', { status: 503 });
-        }
-      })
-    );
-    return;
-  }
-
-  // CDN libraries (jspdf, html2canvas) — cache-first
-  if (url.includes('cdnjs.cloudflare.com')) {
-    e.respondWith(
-      caches.open(CACHE_STATIC).then(async cache => {
-        const cached = await cache.match(e.request);
-        if (cached) return cached;
-        try {
-          const response = await fetch(e.request);
-          if (response.status === 200) cache.put(e.request, response.clone());
-          return response;
-        } catch {
-          return cached || new Response('', { status: 503 });
-        }
-      })
-    );
-    return;
-  }
-
-  // App files — network first, cache fallback
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request)
-      .then(response => {
-        if (response && response.status === 200) {
-          caches.open(CACHE_STATIC).then(c => c.put(e.request, response.clone()));
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        if (res && res.status === 200 && res.type !== 'opaque') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
         }
-        return response;
-      })
-      .catch(() => caches.match(e.request).then(c => c || new Response('Offline', { status: 503 })))
+        return res;
+      }).catch(() => cached || new Response('Offline', { status: 503 }));
+    })
   );
 });
