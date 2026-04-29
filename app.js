@@ -865,7 +865,14 @@ function buildPreview(qid){
   const fmtN=n=>Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
   const logoHTML=co?.logoImg?`<div class="qv-logo-img"><img src="${co.logoImg}" alt="logo"></div>`:`<div class="qv-logo-img" style="background:${co?.logoColor||ac}">${esc(co?.logoText||'A')}</div>`;
   const rows=(q.items||[]).map((li,i)=>{const lt=li.unitPrice*(li.qty||1)*(1-(li.discount||0));return`<tr><td>${i+1}.</td><td><div class="qv-tbl-desc">${esc(li.desc||li.itemId)}</div></td><td>${li.qty||1}</td><td>${fmtN(li.unitPrice)}</td><td>${li.discount?'−'+Math.round(li.discount*100)+'%':'—'}</td><td>${fmtN(lt)}</td></tr>`;}).join('');
-  const pmHTML=(co?.paymentMethods||[]).map(pm=>{if(pm.type==='Bank')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:${ac}">BANK TRANSFER</div>${pm.bankName?`<div class="qv-pay-row">Bank: <b>${esc(pm.bankName)}</b></div>`:''} ${pm.branch?`<div class="qv-pay-row">Branch: <b>${esc(pm.branch)}</b></div>`:''} ${pm.accName?`<div class="qv-pay-row">Account: <b>${esc(pm.accName)}</b></div>`:''} ${pm.accNum?`<div class="qv-pay-row">A/C No: <b>${esc(pm.accNum)}</b></div>`:''} ${pm.swift?`<div class="qv-pay-row">SWIFT: <b>${esc(pm.swift)}</b></div>`:''}</div>`;if(pm.type==='M-Pesa')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA</div>${pm.paybillBusiness?`<div class="qv-pay-row">Paybill: <b>${esc(pm.paybillBusiness)}</b></div>`:''} ${pm.paybillAccount?`<div class="qv-pay-row">Account: <b>${esc(pm.paybillAccount)}</b></div>`:''} ${pm.tillNumber?`<div class="qv-pay-row">Till No: <b>${esc(pm.tillNumber)}</b></div>`:''} ${pm.mpesaName?`<div class="qv-pay-row">Name: <b>${esc(pm.mpesaName)}</b></div>`:''}</div>`;return`<div class="qv-pay-block"><div class="qv-pay-type">${esc(pm.type)}</div><div class="qv-pay-row">${esc(pm.details||'')}</div></div>`;}).join('');
+  const pmHTML=(co?.paymentMethods||[]).map(pm=>{
+    if(pm.type==='Bank')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:${ac}">BANK TRANSFER</div>${pm.bankName?`<div class="qv-pay-row">Bank: <b>${esc(pm.bankName)}</b></div>`:''} ${pm.branch?`<div class="qv-pay-row">Branch: <b>${esc(pm.branch)}</b></div>`:''} ${pm.accName?`<div class="qv-pay-row">Account: <b>${esc(pm.accName)}</b></div>`:''} ${pm.accNum?`<div class="qv-pay-row">A/C No: <b>${esc(pm.accNum)}</b></div>`:''} ${pm.swift?`<div class="qv-pay-row">SWIFT: <b>${esc(pm.swift)}</b></div>`:''}</div>`;
+    if(pm.type==='M-Pesa Paybill')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA PAYBILL</div>${pm.paybillBusiness?`<div class="qv-pay-row">Paybill No: <b>${esc(pm.paybillBusiness)}</b></div>`:''} ${pm.paybillAccount?`<div class="qv-pay-row">Account: <b>${esc(pm.paybillAccount)}</b></div>`:''} ${pm.mpesaName?`<div class="qv-pay-row">Name: <b>${esc(pm.mpesaName)}</b></div>`:''}</div>`;
+    if(pm.type==='M-Pesa Till')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA TILL (BUY GOODS)</div>${pm.tillNumber?`<div class="qv-pay-row">Till No: <b>${esc(pm.tillNumber)}</b></div>`:''} ${pm.mpesaName?`<div class="qv-pay-row">Name: <b>${esc(pm.mpesaName)}</b></div>`:''}</div>`;
+    if(pm.type==='M-Pesa Send Money')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA SEND MONEY</div>${pm.sendMoneyPhone?`<div class="qv-pay-row">Phone: <b>${esc(pm.sendMoneyPhone)}</b></div>`:''} ${pm.sendMoneyName?`<div class="qv-pay-row">Name: <b>${esc(pm.sendMoneyName)}</b></div>`:''} ${pm.sendMoneyRef?`<div class="qv-pay-row">Ref: ${esc(pm.sendMoneyRef)}</div>`:''}</div>`;
+    if(pm.type==='Pochi la Biashara')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#1565C0">POCHI LA BIASHARA</div>${pm.pochiPhone?`<div class="qv-pay-row">Phone: <b>${esc(pm.pochiPhone)}</b></div>`:''} ${pm.pochiName?`<div class="qv-pay-row">Name: <b>${esc(pm.pochiName)}</b></div>`:''} ${pm.pochiRef?`<div class="qv-pay-row">Ref: ${esc(pm.pochiRef)}</div>`:''}</div>`;
+    return`<div class="qv-pay-block"><div class="qv-pay-type">${esc(pm.type)}</div><div class="qv-pay-row">${esc(pm.details||'')}</div></div>`;
+  }).join('');
   const termsHTML=(co?.terms||'').split('\n').filter(t=>t.trim()).map((t,i)=>`<div style="display:flex;gap:8px;margin-bottom:4px"><span style="font-size:8pt;color:${ac};font-weight:700;flex-shrink:0;min-width:16px;line-height:1.7">${i+1}.</span><span style="font-size:8pt;color:#555;line-height:1.7">${esc(t.replace(/^\d+\.\s*/,''))}</span></div>`).join('');
   const watermark={Won:'ACCEPTED',Lost:'DECLINED',Draft:'DRAFT'}[q.status]||'';
   const docEl=document.getElementById('prev-doc');
@@ -1138,13 +1145,22 @@ function buildCoForm(co){
     <div style="height:20px"></div>`;
   setTimeout(wirePMSelects,50);
 }
-function pmCardHTML(pm,i){return`<div class="pmcard" id="pm-${i}"><div class="pmhead"><span class="pm-badge" id="pm-badge-${i}">${esc(pm.type)}</span><div style="flex:1">${buildCustomSelect({id:'pm-type-'+i,label:'Type',options:['Bank','M-Pesa','Cash','Cheque','Other'].map(t=>({value:t,label:t})),value:pm.type})}</div><button class="ib" style="width:30px;height:30px;color:var(--E)" onclick="removePM(${i})"><span class="material-icons-round" style="font-size:18px">delete</span></button></div><div id="pm-fields-${i}">${pmFieldsHTML(pm,i)}</div></div>`;}
+function pmCardHTML(pm,i){return`<div class="pmcard" id="pm-${i}"><div class="pmhead"><span class="pm-badge" id="pm-badge-${i}">${esc(pm.type)}</span><div style="flex:1">${buildCustomSelect({id:'pm-type-'+i,label:'Type',options:['Bank','M-Pesa Paybill','M-Pesa Till','M-Pesa Send Money','Pochi la Biashara','Cash','Cheque','Other'].map(t=>({value:t,label:t})),value:pm.type})}</div><button class="ib" style="width:30px;height:30px;color:var(--E)" onclick="removePM(${i})"><span class="material-icons-round" style="font-size:18px">delete</span></button></div><div id="pm-fields-${i}">${pmFieldsHTML(pm,i)}</div></div>`;}
 function pmFieldsHTML(pm,i){if(pm.type==='Bank')return`<div class="fr"><div class="fg"><label class="fl">Bank Name</label><input class="fi" id="pm-bank-${i}" value="${esc(pm.bankName||'')}" placeholder="Equity Bank Kenya"></div><div class="fg"><label class="fl">Branch</label><input class="fi" id="pm-branch-${i}" value="${esc(pm.branch||'')}" placeholder="Westlands"></div></div><div class="fr"><div class="fg"><label class="fl">Account Name</label><input class="fi" id="pm-accnm-${i}" value="${esc(pm.accName||'')}" placeholder="Company Ltd."></div><div class="fg"><label class="fl">Account No.</label><input class="fi" id="pm-accn-${i}" value="${esc(pm.accNum||'')}" placeholder="0123456789"></div></div><div class="fg"><label class="fl">SWIFT</label><input class="fi" id="pm-swift-${i}" value="${esc(pm.swift||'')}" placeholder="EQBLKENA"></div>`;if(pm.type==='M-Pesa')return`<div class="fr"><div class="fg"><label class="fl">Paybill No.</label><input class="fi" id="pm-pb-${i}" value="${esc(pm.paybillBusiness||'')}" placeholder="123456"></div><div class="fg"><label class="fl">Account Field</label><input class="fi" id="pm-pba-${i}" value="${esc(pm.paybillAccount||'')}" placeholder="Invoice No."></div></div><div class="fr"><div class="fg"><label class="fl">Till No.</label><input class="fi" id="pm-till-${i}" value="${esc(pm.tillNumber||'')}"></div><div class="fg"><label class="fl">M-Pesa Name</label><input class="fi" id="pm-mpnm-${i}" value="${esc(pm.mpesaName||'')}" placeholder="Company Name"></div></div>`;return`<div class="fg"><label class="fl">Details</label><textarea class="fi" id="pm-det-${i}">${esc(pm.details||'')}</textarea></div>`;}
 function pmTypeChange(i,type){document.getElementById('pm-badge-'+i).textContent=type;document.getElementById('pm-fields-'+i).innerHTML=pmFieldsHTML({type},i);}
 function wirePMSelects(){document.querySelectorAll('[id^="pm-type-"]').forEach(sel=>{sel.addEventListener('change',function(){pmTypeChange(this.id.replace('pm-type-',''),this.value);});});}
 function addPayMethod(){const list=document.getElementById('pm-list');const idx=list.querySelectorAll('.pmcard').length;const div=document.createElement('div');div.innerHTML=pmCardHTML({type:'Bank'},idx);list.appendChild(div.firstElementChild);setTimeout(wirePMSelects,50);}
 function removePM(i){document.getElementById('pm-'+i)?.remove();}
-function collectPMs(){return Array.from(document.querySelectorAll('#pm-list .pmcard')).map((_,i)=>{const type=document.getElementById('pm-type-'+i)?.value||'Bank';const pm={type};if(type==='Bank'){pm.bankName=document.getElementById('pm-bank-'+i)?.value||'';pm.branch=document.getElementById('pm-branch-'+i)?.value||'';pm.accName=document.getElementById('pm-accnm-'+i)?.value||'';pm.accNum=document.getElementById('pm-accn-'+i)?.value||'';pm.swift=document.getElementById('pm-swift-'+i)?.value||'';}else if(type==='M-Pesa'){pm.paybillBusiness=document.getElementById('pm-pb-'+i)?.value||'';pm.paybillAccount=document.getElementById('pm-pba-'+i)?.value||'';pm.tillNumber=document.getElementById('pm-till-'+i)?.value||'';pm.mpesaName=document.getElementById('pm-mpnm-'+i)?.value||'';}else{pm.details=document.getElementById('pm-det-'+i)?.value||'';}return pm;});}
+function collectPMs(){return Array.from(document.querySelectorAll('#pm-list .pmcard')).map((_,i)=>{
+  const g=id=>document.getElementById(id)?.value||'';
+  const type=g('pm-type-'+i)||'Bank';const pm={type};
+  if(type==='Bank'){pm.bankName=g('pm-bank-'+i);pm.branch=g('pm-branch-'+i);pm.accName=g('pm-accnm-'+i);pm.accNum=g('pm-accn-'+i);pm.swift=g('pm-swift-'+i);}
+  else if(type==='M-Pesa Paybill'){pm.paybillBusiness=g('pm-pb-'+i);pm.paybillAccount=g('pm-pba-'+i);pm.mpesaName=g('pm-mpnm-'+i);}
+  else if(type==='M-Pesa Till'){pm.tillNumber=g('pm-till-'+i);pm.mpesaName=g('pm-mpnm-'+i);}
+  else if(type==='M-Pesa Send Money'){pm.sendMoneyPhone=g('pm-smphone-'+i);pm.sendMoneyName=g('pm-smnm-'+i);pm.sendMoneyRef=g('pm-smref-'+i);}
+  else if(type==='Pochi la Biashara'){pm.pochiPhone=g('pm-pochphone-'+i);pm.pochiName=g('pm-pochnm-'+i);pm.pochiRef=g('pm-pochref-'+i);}
+  else{pm.details=g('pm-det-'+i);}
+  return pm;});}
 function previewLogo(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{document.getElementById('co-img').value=e.target.result;document.getElementById('logo-prev').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;};r.readAsDataURL(file);}
 function updLogoColor(val){document.getElementById('logo-prev').style.background=val;document.getElementById('co-col-show').style.background=val;}
 function updLogoText(t){if(!document.getElementById('co-img')?.value)document.getElementById('logo-prev').textContent=t;}
@@ -1333,3 +1349,1065 @@ async function init(){
   initOfflineIndicator();
 }
 document.addEventListener('DOMContentLoaded',init);
+// ═══════════════════════════════════════════════════════
+// QUOTES PWA v5.0 — Feature Extension Block
+// Appended to app_v5_work.js
+// Covers: customer statement, bulk actions, CSV import,
+//   recurring quotes, smart pricing, XLSX export,
+//   print-to-PDF, product bundles, signature pad,
+//   animated counters, haptic feedback, long-press menu,
+//   custom quote fields, rich text notes, diff viewer,
+//   quote approval workflow, offline PDF queue,
+//   notification reminders
+// ═══════════════════════════════════════════════════════
+
+// ── HAPTIC FEEDBACK ─────────────────────────────────────
+function hap(ms=10){try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
+
+// ── ANIMATED COUNTER ────────────────────────────────────
+function animateCounter(el,target,duration=600,prefix='',suffix=''){
+  const start=Date.now();const from=0;
+  const tick=()=>{
+    const elapsed=Date.now()-start;const progress=Math.min(elapsed/duration,1);
+    const ease=1-Math.pow(1-progress,3);
+    const val=Math.round(from+(target-from)*ease);
+    el.textContent=prefix+val.toLocaleString()+suffix;
+    if(progress<1)requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function animateDashMetrics(){
+  const qs=acoQuotes();
+  const pairs=[
+    ['d-met-sent',qs.filter(q=>q.status==='Sent').length,'',''],
+    ['d-met-won',qs.filter(q=>q.status==='Won').length,'',''],
+    ['d-met-overdue',qs.filter(isOverdue).length,'',''],
+  ];
+  pairs.forEach(([id,val,pre,suf])=>{
+    const el=document.getElementById(id);if(el)animateCounter(el,val,700,pre,suf);
+  });
+}
+
+// ── LONG-PRESS CONTEXT MENU ─────────────────────────────
+let _lpTimer=null;
+function initLongPress(container){
+  container.querySelectorAll('.qi[data-qid]').forEach(card=>{
+    card.addEventListener('touchstart',e=>{
+      _lpTimer=setTimeout(()=>{hap(30);showLongPressMenu(card.dataset.qid,e.touches[0].clientX,e.touches[0].clientY);},500);
+    },{passive:true});
+    card.addEventListener('touchend',()=>{clearTimeout(_lpTimer);},{passive:true});
+    card.addEventListener('touchmove',()=>{clearTimeout(_lpTimer);},{passive:true});
+    card.addEventListener('contextmenu',e=>{e.preventDefault();showLongPressMenu(card.dataset.qid,e.clientX,e.clientY);});
+  });
+}
+function showLongPressMenu(qid,cx,cy){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  const existing=document.getElementById('lp-menu');if(existing)existing.remove();
+  const menu=document.createElement('div');
+  menu.id='lp-menu';
+  menu.style.cssText=`position:fixed;left:${Math.min(cx,window.innerWidth-200)}px;top:${Math.min(cy,window.innerHeight-200)}px;background:var(--su);border-radius:12px;box-shadow:var(--sh2);z-index:8000;overflow:hidden;min-width:180px;animation:dropIn .15s ease;border:1px solid var(--ol2)`;
+  const acts=[
+    ['edit','Edit',`closeDlg('dlg-qd');setTimeout(()=>openQE('${qid}'),120)`],
+    ['content_copy','Duplicate',`dupQ('${qid}')`],
+    ['bookmark_add','Save as Template',`saveAsTemplate('${qid}')`],
+    ['check_circle','Mark as Won',`setQStat('${qid}','Won')`],
+    ['send','Mark as Sent',`setQStat('${qid}','Sent')`],
+    ['picture_as_pdf','Preview PDF',`openPreview('${qid}')`],
+    ['share','Share',`openShareDialog('${qid}')`],
+    ['delete','Delete',`softDelItem('quote','${qid}')`],
+  ];
+  menu.innerHTML=acts.map(([ic,lbl,fn])=>`<div onclick="${fn};document.getElementById('lp-menu')?.remove()" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--ol2);font-size:13px;font-weight:500;transition:background .1s" onmouseover="this.style.background='var(--su2)'" onmouseout="this.style.background=''"><span class="material-icons-round" style="font-size:18px;color:var(--P)">${ic}</span>${lbl}</div>`).join('');
+  document.body.appendChild(menu);
+  setTimeout(()=>document.addEventListener('touchstart',()=>menu.remove(),{once:true}),100);
+}
+
+// ── CUSTOMER STATEMENT ──────────────────────────────────
+function openCustomerStatement(custId){
+  const c=getCust(custId);if(!c)return;
+  const qs=DB.quotes.filter(q=>q.customerId===custId).sort((a,b)=>b.date.localeCompare(a.date));
+  const won=qs.filter(q=>q.status==='Won');
+  const outstanding=qs.filter(q=>q.isInvoice&&q.payment?.status!=='Paid');
+  const totalWon=won.reduce((s,q)=>s+calcTotals(q).total,0);
+  const totalOutstanding=outstanding.reduce((s,q)=>{const tots=calcTotals(q);const paid=q.payment?.status==='Paid'?tots.total:q.payment?.amountPaid||0;return s+(tots.total-paid);},0);
+  document.getElementById('set-ttl').textContent='Customer Statement';
+  document.getElementById('set-body').innerHTML=`
+    <div style="padding:0 0 12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div class="av" style="width:48px;height:48px;font-size:20px;background:${avColor(c.company)}">${avLetter(c.company)}</div>
+        <div><div style="font-size:17px;font-weight:800">${esc(c.company)}</div><div style="font-size:13px;color:var(--t2)">${esc(c.contact||'')}${c.industry?' · '+esc(c.industry):''}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:var(--su2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--t2)">Lifetime Value</div><div style="font-size:18px;font-weight:800;color:var(--S)">${fmt(c.ltv||0)}</div></div>
+        <div style="background:var(--su2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--t2)">Outstanding</div><div style="font-size:18px;font-weight:800;color:${totalOutstanding>0?'var(--E)':'var(--S)'}">${fmt(totalOutstanding)}</div></div>
+        <div style="background:var(--su2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--t2)">Total Deals</div><div style="font-size:18px;font-weight:800">${qs.length}</div></div>
+        <div style="background:var(--su2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--t2)">Won Deals</div><div style="font-size:18px;font-weight:800;color:var(--P)">${won.length}</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">All Quotes & Invoices</div>
+      ${qs.length===0?`<div class="empty" style="padding:20px"><span class="material-icons-round">receipt_long</span><div class="empty-t">No quotes yet</div></div>`
+      :qs.map(q=>{const tots=calcTotals(q);const statusColor={Draft:'#4285F4',Sent:'#F9AB00',Won:'#34A853',Lost:'#EA4335',Expired:'#9AA0A6'}[q.status]||'#9AA0A6';return`<div onclick="closeDlg('dlg-set');setTimeout(()=>openQD('${q.id}'),120)" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--ol2);cursor:pointer">
+        <div style="width:4px;height:40px;border-radius:2px;background:${statusColor};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${esc(q.isInvoice?q.invoiceId:q.id)}</div><div style="font-size:11px;color:var(--t2)">${fmtDate(q.date)} · <span class="${chipCls(q.status)}">${q.status}</span>${q.isInvoice&&q.payment?.status?` · ${q.payment.status}`:''}</div></div>
+        <div style="font-size:14px;font-weight:700">${fmt(tots.total)}</div>
+      </div>`;}).join('')}
+    </div>`;
+  openDlg('dlg-set');pushNav('statement-'+custId);
+}
+
+// ── BULK STATUS UPDATE ──────────────────────────────────
+let _bulkSelected=new Set();
+let _bulkMode=false;
+function toggleBulkMode(){
+  _bulkMode=!_bulkMode;_bulkSelected.clear();
+  renderQuotes();
+  const bar=document.getElementById('bulk-bar');
+  if(bar)bar.style.display=_bulkMode?'flex':'none';
+}
+function toggleBulkSelect(qid){
+  hap(8);
+  if(_bulkSelected.has(qid))_bulkSelected.delete(qid);else _bulkSelected.add(qid);
+  document.getElementById('bulk-count').textContent=_bulkSelected.size+' selected';
+  const card=document.querySelector(`.qi[data-qid="${qid}"]`);
+  if(card)card.classList.toggle('bulk-selected',_bulkSelected.has(qid));
+}
+function bulkSetStatus(status){
+  if(!_bulkSelected.size){snack('Select quotes first');return;}
+  confirmAct(`Mark ${_bulkSelected.size} quote(s) as ${status}?`,()=>{
+    _bulkSelected.forEach(qid=>{const q=DB.quotes.find(x=>x.id===qid);if(q){q.status=status;logActivity(q,'Bulk status: '+status);}if(status==='Won'&&q)updateLTV(q.customerId);});
+    save();_bulkMode=false;_bulkSelected.clear();renderQuotes();updateNavBadges();snack('Updated '+_bulkSelected.size+' quotes');
+    const bar=document.getElementById('bulk-bar');if(bar)bar.style.display='none';
+  });
+}
+function bulkDelete(){
+  if(!_bulkSelected.size){snack('Select quotes first');return;}
+  confirmAct(`Delete ${_bulkSelected.size} quote(s)? This cannot be undone.`,()=>{
+    const ids=[..._bulkSelected];
+    ids.forEach(qid=>{const q=DB.quotes.find(x=>x.id===qid);if(q)updateLTV(q.customerId);DB.quotes=DB.quotes.filter(x=>x.id!==qid);});
+    save();_bulkMode=false;_bulkSelected.clear();renderQuotes();updateNavBadges();snack(ids.length+' quotes deleted');
+    const bar=document.getElementById('bulk-bar');if(bar)bar.style.display='none';
+  });
+}
+
+// ── CSV IMPORT ───────────────────────────────────────────
+function openCSVImport(type){
+  document.getElementById('set-ttl').textContent=`Import ${type==='inventory'?'Products':'Customers'} from CSV`;
+  document.getElementById('set-body').innerHTML=`
+    <div style="background:var(--su2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--t2);line-height:1.7">
+      <b>Expected columns for ${type==='inventory'?'Products':'Customers'}:</b><br>
+      ${type==='inventory'?'<code>id, name, category, description, unitCost, markup, stock</code>':'<code>id, company, contact, email, phone, address, industry, tier, taxPin</code>'}
+      <br><br>First row must be the header row. Fields can be in any order.
+    </div>
+    <input type="file" id="csv-file" accept=".csv,.txt" class="fi" onchange="previewCSV('${type}',this)">
+    <div id="csv-preview" style="margin-top:12px"></div>
+    <div id="csv-import-btn" style="margin-top:10px;display:none">
+      <button class="btn bp btn-w" onclick="doCSVImport('${type}')"><span class="material-icons-round">upload</span> Import Data</button>
+    </div>`;
+  openDlg('dlg-set');pushNav('csv-import-'+type);
+}
+let _csvParsed=[];
+function previewCSV(type,input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;const lines=text.split('\n').filter(l=>l.trim());
+    if(lines.length<2){snack('CSV must have a header row and at least one data row');return;}
+    const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
+    const rows=lines.slice(1).map(line=>{
+      const vals=[];let cur='',inQ=false;
+      for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else cur+=ch;}
+      vals.push(cur.trim());
+      const obj={};headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,''));
+      return obj;
+    }).filter(r=>Object.values(r).some(v=>v));
+    _csvParsed=rows;
+    const preview=document.getElementById('csv-preview');
+    preview.innerHTML=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">${rows.length} rows found — Preview (first 3):</div>`+
+      rows.slice(0,3).map(r=>`<div style="background:var(--su2);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:12px;font-family:monospace">${Object.entries(r).slice(0,5).map(([k,v])=>`<span style="color:var(--t2)">${k}:</span> ${esc(v)}`).join(' &nbsp;·&nbsp; ')}</div>`).join('');
+    document.getElementById('csv-import-btn').style.display='block';
+  };
+  reader.readAsText(file);
+}
+function doCSVImport(type){
+  if(!_csvParsed.length){snack('No data to import');return;}
+  const co=activeCo();let added=0,skipped=0;
+  _csvParsed.forEach(row=>{
+    if(type==='inventory'){
+      const id=(row.id||row.ID||nextId('ITM',DB.inventory)).trim();
+      if(DB.inventory.find(i=>i.id===id)){skipped++;return;}
+      DB.inventory.push({id,name:row.name||row.Name||id,category:row.category||row.Category||getCategories()[0],description:row.description||row.Description||'',unitCost:parseFloat(row.unitcost||row.unitCost||row['unit cost']||0),markup:parseFloat(row.markup||row.Markup||0.3),stock:row.stock?parseInt(row.stock):null,trackStock:!!row.stock,companyId:co?.id});added++;
+    } else {
+      const id=(row.id||row.ID||nextId('CUS',DB.customers)).trim();
+      if(DB.customers.find(c=>c.id===id)){skipped++;return;}
+      DB.customers.push({id,company:row.company||row.Company||id,contact:row.contact||row.Contact||'',email:row.email||row.Email||'',phone:row.phone||row.Phone||'',address:row.address||row.Address||'',industry:row.industry||row.Industry||'',tier:row.tier||row.Tier||'Bronze',taxPin:row.taxpin||row.taxPin||'',companyId:co?.id,ltv:0});added++;
+    }
+  });
+  save();closeDlg('dlg-set');renderPage(curPage);snack(`Imported ${added} records${skipped?', '+skipped+' skipped (duplicate IDs)':''}`);
+}
+
+// ── XLSX EXPORT ──────────────────────────────────────────
+function exportToXLSX(type){
+  const qs=acoQuotes(),custs=acoCusts(),inv=acoInv();
+  let csv='',filename='';
+  if(type==='quotes'){
+    csv='Quote ID,Customer,Date,Valid Until,Status,Salesperson,Subtotal,Discount,Net,Tax,Total,Margin %\n';
+    qs.forEach(q=>{const cu=getCust(q.customerId),sp=getSP(q.salespersonId),tots=calcTotals(q);csv+=`"${q.isInvoice?q.invoiceId:q.id}","${(cu?.company||'').replace(/"/g,'""')}","${q.date}","${q.validUntil}","${q.status}","${(sp?.name||'').replace(/"/g,'""')}",${tots.sub.toFixed(2)},${tots.discAmt.toFixed(2)},${tots.net.toFixed(2)},${tots.taxAmt.toFixed(2)},${tots.total.toFixed(2)},${Math.round(tots.margin*100)}\n`;});
+    filename='quotes_export.csv';
+  } else if(type==='customers'){
+    csv='ID,Company,Contact,Email,Phone,Industry,Tier,LTV\n';
+    custs.forEach(c=>csv+=`"${c.id}","${(c.company||'').replace(/"/g,'""')}","${(c.contact||'').replace(/"/g,'""')}","${c.email||''}","${c.phone||''}","${c.industry||''}","${c.tier||''}",${(c.ltv||0).toFixed(2)}\n`);
+    filename='customers_export.csv';
+  } else if(type==='inventory'){
+    csv='ID,Name,Category,Description,Unit Cost,Markup %,Sale Price,Margin %,Stock\n';
+    inv.forEach(p=>{const price=p.unitCost*(1+p.markup);const mg=Math.round(productMargin(p)*100);csv+=`"${p.id}","${(p.name||'').replace(/"/g,'""')}","${p.category||''}","${(p.description||'').replace(/"/g,'""')}",${p.unitCost},${Math.round(p.markup*100)},${price.toFixed(2)},${mg},${p.stock!=null?p.stock:''}\n`;});
+    filename='inventory_export.csv';
+  }
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);snack('Exported: '+filename);
+}
+
+// ── PRINT TO PDF VIA @MEDIA PRINT ───────────────────────
+function printQuote(qid){
+  buildPreview(qid||curQID);
+  setTimeout(()=>{
+    const pages=window._previewPagesArr;if(!pages?.length)return;
+    const ac=window._previewAccentUsed||'#1A73E8';
+    const w=window.open('','_blank','width=860,height=1100');
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quote</title><style>@media print{body{margin:0}@page{size:A4;margin:0}}body{margin:0;font-family:'Inter',sans-serif}</style></head><body>`);
+    pages.forEach((content,i)=>{
+      w.document.write(`<div style="width:210mm;min-height:297mm;page-break-after:${i<pages.length-1?'always':'avoid'};position:relative;overflow:hidden;box-sizing:border-box;padding:40px;font-family:'Inter',ui-sans-serif,sans-serif">`);
+      // inline the CSS from iframeCSS
+      const tmp=document.createElement('div');tmp.innerHTML=content;w.document.write(content);
+      w.document.write('</div>');
+    });
+    w.document.write(`</body></html>`);
+    w.document.close();
+    setTimeout(()=>{w.focus();w.print();},800);
+  },400);
+}
+
+// ── RECURRING QUOTE REMINDERS ────────────────────────────
+function openRecurringSetup(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  const rec=q.recurring||{enabled:false,interval:'annually',nextDate:''};
+  document.getElementById('set-ttl').textContent='Recurring Quote';
+  document.getElementById('set-body').innerHTML=`
+    <div style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.6">Mark this quote as recurring. A dashboard reminder will appear when renewal is due.</div>
+    <div class="fg"><label class="fl" style="display:flex;justify-content:space-between;align-items:center">Enable Recurring<button class="tog ${rec.enabled?'on':''}" id="rec-tog" onclick="this.classList.toggle('on')"></button></label></div>
+    <div class="fg"><label class="fl">Renewal Interval</label>${buildCustomSelect({id:'rec-interval',label:'Interval',options:['monthly','quarterly','bi-annually','annually'].map(v=>({value:v,label:v.charAt(0).toUpperCase()+v.slice(1)})),value:rec.interval||'annually'})}</div>
+    <div class="fg"><label class="fl">Next Renewal Date</label><input class="fi" type="date" id="rec-date" value="${rec.nextDate||''}"></div>
+    <button class="btn bp btn-w" onclick="saveRecurring('${qid}')">Save</button>`;
+  openDlg('dlg-set');pushNav('recurring-'+qid);
+}
+function saveRecurring(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  q.recurring={enabled:!!document.getElementById('rec-tog')?.classList.contains('on'),interval:v('rec-interval')||'annually',nextDate:v('rec-date')};
+  logActivity(q,'Recurring setup: '+(q.recurring.enabled?q.recurring.interval:'disabled'));
+  save();closeDlg('dlg-set');snack('Recurring settings saved');
+}
+function getRecurringAlerts(){
+  const today=new Date().toISOString().slice(0,10);
+  return DB.quotes.filter(q=>q.recurring?.enabled&&q.recurring.nextDate&&q.recurring.nextDate<=today);
+}
+
+// ── SMART SUGGESTED PRICING ──────────────────────────────
+function getLastPriceForProduct(customerId,itemId){
+  const won=DB.quotes.filter(q=>q.customerId===customerId&&q.status==='Won').sort((a,b)=>b.date.localeCompare(a.date));
+  for(const q of won){const li=(q.items||[]).find(i=>i.itemId===itemId);if(li)return{price:li.unitPrice,quoteId:q.id,date:q.date};}
+  return null;
+}
+
+// ── PRODUCT BUNDLING ─────────────────────────────────────
+function openBundleManager(){
+  const bundles=DB.settings.bundles||[];
+  document.getElementById('set-ttl').textContent='Product Bundles';
+  document.getElementById('set-body').innerHTML=`
+    <div style="font-size:13px;color:var(--t2);margin-bottom:12px">Bundles appear as single searchable items in the quote editor and expand into their component products.</div>
+    <button class="btn bp btn-w" style="margin-bottom:12px" onclick="openBundleEditor(null)"><span class="material-icons-round">add</span> New Bundle</button>
+    ${bundles.length===0?`<div class="empty" style="padding:20px"><span class="material-icons-round">inventory_2</span><div class="empty-t">No bundles yet</div></div>`
+    :bundles.map(b=>`<div style="background:var(--su2);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:14px;font-weight:700">${esc(b.name)}</div><div style="display:flex;gap:6px"><button class="btn bt btn-sm" onclick="openBundleEditor('${b.id}')">Edit</button><button class="btn bd2 btn-sm" onclick="deleteBundle('${b.id}')">Del</button></div></div><div style="font-size:12px;color:var(--t2)">${(b.items||[]).length} products · ${esc(b.description||'')}</div></div>`).join('')}`;
+  openDlg('dlg-set');pushNav('bundles');
+}
+function openBundleEditor(id){
+  const bundles=DB.settings.bundles||[];const b=id?bundles.find(x=>x.id===id):null;
+  const inv=acoInv();
+  document.getElementById('set-ttl').textContent=id?'Edit Bundle':'New Bundle';
+  document.getElementById('set-body').innerHTML=`
+    <div class="fg"><label class="fl">Bundle Name *</label><input class="fi" id="bnd-nm" value="${esc(b?.name||'')}" placeholder="e.g. Starter Pack"></div>
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="bnd-desc" value="${esc(b?.description||'')}" placeholder="Short description for search"></div>
+    <div class="fg"><label class="fl">Products in Bundle</label>
+      <div id="bnd-items" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+        ${(b?.items||[]).map((bi,i)=>{const p=getProd(bi.itemId);return`<div style="display:flex;gap:8px;align-items:center;background:var(--su2);border-radius:6px;padding:8px 10px"><div style="flex:1;font-size:13px">${esc(p?.name||bi.itemId)}</div><input type="number" class="fi" style="width:70px;height:32px;padding:4px 8px;font-size:13px" value="${bi.qty||1}" id="bnd-qty-${i}" min="1"><button class="ib" style="width:28px;height:28px;color:var(--E)" onclick="this.closest('div[style]').remove()"><span class="material-icons-round" style="font-size:16px">close</span></button></div>`;}).join('')}
+      </div>
+      ${buildCustomSelect({id:'bnd-add-item',label:'Add Product',placeholder:'— Select product to add —',options:[{value:'',label:'— Select product —'},...inv.map(p=>({value:p.id,label:p.name}))],value:'',searchable:true})}
+      <button class="btn btn-ton btn-w" style="margin-top:8px" onclick="addBundleItem()"><span class="material-icons-round">add</span> Add Selected Product</button>
+    </div>
+    <button class="btn bp btn-w" onclick="saveBundle('${id||''}')">Save Bundle</button>
+    ${id?`<button class="btn bd2 btn-w" style="margin-top:8px" onclick="deleteBundle('${id}')">Delete Bundle</button>`:''}`;
+  // Stay in same sheet
+}
+function addBundleItem(){
+  const prodId=v('bnd-add-item');if(!prodId)return;const p=getProd(prodId);if(!p)return;
+  const container=document.getElementById('bnd-items');
+  const idx=container.querySelectorAll('div[style]').length;
+  const div=document.createElement('div');div.style.cssText='display:flex;gap:8px;align-items:center;background:var(--su2);border-radius:6px;padding:8px 10px';
+  div.innerHTML=`<div style="flex:1;font-size:13px" data-itemid="${p.id}">${esc(p.name)}</div><input type="number" class="fi" style="width:70px;height:32px;padding:4px 8px;font-size:13px" value="1" id="bnd-qty-${idx}" min="1"><button class="ib" style="width:28px;height:28px;color:var(--E)" onclick="this.closest('div[style]').remove()"><span class="material-icons-round" style="font-size:16px">close</span></button>`;
+  container.appendChild(div);
+}
+function saveBundle(id){
+  const name=v('bnd-nm');if(!name){snack('Bundle name required');return;}
+  const container=document.getElementById('bnd-items');
+  const items=[...container.querySelectorAll('[data-itemid]')].map((el,i)=>({itemId:el.dataset.itemid,qty:parseInt(document.getElementById('bnd-qty-'+i)?.value)||1}));
+  if(!items.length){snack('Add at least one product');return;}
+  if(!DB.settings.bundles)DB.settings.bundles=[];
+  const bundle={id:id||'BND-'+uid().slice(0,6).toUpperCase(),name,description:v('bnd-desc'),items};
+  const idx=DB.settings.bundles.findIndex(b=>b.id===bundle.id);
+  if(idx>=0)DB.settings.bundles[idx]=bundle;else DB.settings.bundles.push(bundle);
+  save();openBundleManager();snack('Bundle saved');
+}
+function deleteBundle(id){DB.settings.bundles=(DB.settings.bundles||[]).filter(b=>b.id!==id);save();openBundleManager();snack('Bundle deleted');}
+function expandBundleIntoItems(bundleId){
+  const b=(DB.settings.bundles||[]).find(x=>x.id===bundleId);if(!b)return[];
+  return (b.items||[]).map(bi=>{const p=getProd(bi.itemId);return{itemId:bi.itemId,desc:p?.name||bi.itemId,qty:bi.qty||1,unitPrice:p?p.unitCost*(1+p.markup):0,discount:0};});
+}
+
+// ── SIGNATURE PAD (CANVAS DRAW) ──────────────────────────
+function openSignaturePad(spId){
+  document.getElementById('set-ttl').textContent='Draw Signature';
+  document.getElementById('set-body').innerHTML=`
+    <div style="font-size:13px;color:var(--t2);margin-bottom:10px">Draw your signature with your finger or mouse.</div>
+    <div style="border:2px solid var(--ol);border-radius:8px;overflow:hidden;background:#fff;touch-action:none">
+      <canvas id="sig-canvas" width="340" height="160" style="display:block;width:100%;cursor:crosshair"></canvas>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn bo" onclick="clearSigPad()"><span class="material-icons-round">clear</span> Clear</button>
+      <button class="btn bp" style="flex:1" onclick="saveSigPad('${spId}')"><span class="material-icons-round">check</span> Save Signature</button>
+    </div>`;
+  openDlg('dlg-set');pushNav('sigpad-'+spId);
+  setTimeout(initSigPad,100);
+}
+function initSigPad(){
+  const canvas=document.getElementById('sig-canvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.strokeStyle='#111';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
+  let drawing=false,lastX=0,lastY=0;
+  function getPos(e){const r=canvas.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(canvas.width/r.width),y:(t.clientY-r.top)*(canvas.height/r.height)};}
+  canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);lastX=p.x;lastY=p.y;});
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);lastX=p.x;lastY=p.y;},{passive:false});
+  function draw(e){if(!drawing)return;e.preventDefault?.();const p=getPos(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.stroke();lastX=p.x;lastY=p.y;}
+  canvas.addEventListener('mousemove',draw);canvas.addEventListener('touchmove',draw,{passive:false});
+  canvas.addEventListener('mouseup',()=>drawing=false);canvas.addEventListener('touchend',()=>drawing=false);
+}
+function clearSigPad(){const c=document.getElementById('sig-canvas');if(c)c.getContext('2d').clearRect(0,0,c.width,c.height);}
+function saveSigPad(spId){
+  const c=document.getElementById('sig-canvas');if(!c)return;
+  const dataUrl=c.toDataURL('image/png');
+  const sp=getSP(spId);if(sp){sp.signatureImg=dataUrl;save();snack('Signature saved');}
+  closeDlg('dlg-set');
+}
+
+// ── CUSTOM QUOTE FIELDS ──────────────────────────────────
+function openCustomFieldsManager(){
+  const fields=DB.settings.customQuoteFields||[];
+  document.getElementById('set-ttl').textContent='Custom Quote Fields';
+  document.getElementById('set-body').innerHTML=`
+    <div style="font-size:13px;color:var(--t2);margin-bottom:12px">These fields appear in the quote editor and on the PDF.</div>
+    <div id="cqf-list">${fields.map((f,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center"><input class="fi" style="flex:1" id="cqf-${i}" value="${esc(f)}" placeholder="Field name (e.g. PO Number)"><button class="ib" style="color:var(--E);flex-shrink:0" onclick="this.closest('div').remove()"><span class="material-icons-round">delete</span></button></div>`).join('')}</div>
+    <button class="btn btn-ton btn-w" style="margin-bottom:10px" onclick="addCQFItem()"><span class="material-icons-round">add</span> Add Field</button>
+    <button class="btn bp btn-w" onclick="saveCQF()">Save Fields</button>`;
+  openDlg('dlg-set');pushNav('customfields');
+}
+function addCQFItem(){const list=document.getElementById('cqf-list');const idx=list.querySelectorAll('div').length;const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:center';row.innerHTML=`<input class="fi" style="flex:1" id="cqf-${idx}" placeholder="Field name (e.g. PO Number)"><button class="ib" style="color:var(--E);flex-shrink:0" onclick="this.closest('div').remove()"><span class="material-icons-round">delete</span></button>`;list.appendChild(row);}
+function saveCQF(){const inputs=document.querySelectorAll('[id^="cqf-"]');DB.settings.customQuoteFields=Array.from(inputs).map(el=>el.value.trim()).filter(Boolean);save();closeDlg('dlg-set');renderSettings();snack('Custom fields saved');}
+
+// ── RICH TEXT NOTES ──────────────────────────────────────
+function openRichNotes(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  document.getElementById('set-ttl').textContent='Edit Notes';
+  document.getElementById('set-body').innerHTML=`
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn btn-ton btn-sm" onclick="rtnFmt('bold')"><b>B</b></button>
+      <button class="btn btn-ton btn-sm" onclick="rtnFmt('italic')"><i>I</i></button>
+      <button class="btn btn-ton btn-sm" onclick="rtnFmt('insertUnorderedList')">• List</button>
+      <button class="btn btn-ton btn-sm" onclick="rtnFmt('insertOrderedList')">1. List</button>
+    </div>
+    <div id="rtn-editor" contenteditable="true" style="min-height:160px;border:1.5px solid var(--ol);border-radius:8px;padding:10px 13px;font-size:14px;color:var(--t1);background:var(--su);line-height:1.7;outline:none">${q.notes||''}</div>
+    <button class="btn bp btn-w" style="margin-top:10px" onclick="saveRichNotes('${qid}')">Save Notes</button>`;
+  openDlg('dlg-set');pushNav('richnotes-'+qid);
+}
+function rtnFmt(cmd){document.execCommand(cmd,false,null);document.getElementById('rtn-editor')?.focus();}
+function saveRichNotes(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  const el=document.getElementById('rtn-editor');if(!el)return;
+  q.notes=el.innerHTML;logActivity(q,'Notes updated');
+  save();closeDlg('dlg-set');closeDlg('dlg-qd');openQD(qid);snack('Notes saved');
+}
+
+// ── OFFLINE PDF QUEUE ─────────────────────────────────────
+const _pdfQueue=[];
+function queuePDFExport(qid){
+  _pdfQueue.push(qid);snack('PDF queued — will download when online');
+  window.addEventListener('online',flushPDFQueue,{once:true});
+}
+async function flushPDFQueue(){
+  if(!_pdfQueue.length)return;
+  snack('Back online — generating '+_pdfQueue.length+' queued PDF(s)…');
+  while(_pdfQueue.length){
+    const qid=_pdfQueue.shift();const q=DB.quotes.find(x=>x.id===qid);if(!q)continue;
+    buildPreview(qid);await new Promise(r=>setTimeout(r,800));
+    try{const blob=await generatePDFBlob();if(blob){const fname=buildFileName(q);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fname;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}}
+    catch(e){console.warn('Queued PDF failed:',e);}
+  }
+  snack('All queued PDFs generated!');
+}
+
+// ── QUOTE APPROVAL WORKFLOW ───────────────────────────────
+function submitForApproval(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  q.status='Pending Approval';q.approvalRequestedAt=new Date().toISOString();
+  logActivity(q,'Submitted for approval');save();closeDlg('dlg-qd');closeDlg('dlg-qact');renderPage(curPage);snack('Submitted for approval');updateNavBadges();
+}
+function approveQuote(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  q.status='Draft';q.approvedAt=new Date().toISOString();
+  logActivity(q,'Approved — ready to send');save();closeDlg('dlg-qd');renderPage(curPage);snack('Quote approved ✓',null,null);triggerWinAnimation();
+}
+function rejectQuote(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  q.status='Draft';logActivity(q,'Approval rejected — returned to Draft');
+  save();closeDlg('dlg-qd');renderPage(curPage);snack('Quote returned for revision');
+}
+
+// ── QUOTE COMPARISON ─────────────────────────────────────
+let _compareIds=[];
+function openCompare(){
+  const qs=acoQuotes();
+  document.getElementById('set-ttl').textContent='Compare Quotes';
+  document.getElementById('set-body').innerHTML=`
+    <div style="font-size:13px;color:var(--t2);margin-bottom:12px">Select exactly 2 quotes to compare side by side.</div>
+    ${buildCustomSelect({id:'cmp-q1',label:'Quote 1',options:[{value:'',label:'— Select —'},...qs.map(q=>{const cu=getCust(q.customerId);return{value:q.id,label:(q.isInvoice?q.invoiceId:q.id)+' — '+(cu?.company||'')};})],value:'',searchable:true})}
+    <div style="margin-top:10px"></div>
+    ${buildCustomSelect({id:'cmp-q2',label:'Quote 2',options:[{value:'',label:'— Select —'},...qs.map(q=>{const cu=getCust(q.customerId);return{value:q.id,label:(q.isInvoice?q.invoiceId:q.id)+' — '+(cu?.company||'')};})],value:'',searchable:true})}
+    <button class="btn bp btn-w" style="margin-top:14px" onclick="doCompare()"><span class="material-icons-round">compare_arrows</span> Compare</button>
+    <div id="cmp-result" style="margin-top:16px"></div>`;
+  openDlg('dlg-set');pushNav('compare');
+}
+function doCompare(){
+  const id1=v('cmp-q1'),id2=v('cmp-q2');
+  if(!id1||!id2||id1===id2){snack('Select 2 different quotes');return;}
+  const q1=DB.quotes.find(x=>x.id===id1),q2=DB.quotes.find(x=>x.id===id2);if(!q1||!q2)return;
+  const t1=calcTotals(q1),t2=calcTotals(q2);
+  const cu1=getCust(q1.customerId),cu2=getCust(q2.customerId);
+  const row=(label,v1,v2,higher='higher')=>{
+    const diff=parseFloat(v1)!==parseFloat(v2);
+    const v1Num=parseFloat(String(v1).replace(/[^0-9.-]/g,''));const v2Num=parseFloat(String(v2).replace(/[^0-9.-]/g,''));
+    const win1=higher==='higher'?v1Num>v2Num:v1Num<v2Num;const win2=higher==='higher'?v2Num>v1Num:v2Num<v1Num;
+    return`<tr><td style="padding:7px 10px;font-size:12px;color:var(--t2);border-bottom:1px solid var(--ol2)">${label}</td><td style="padding:7px 10px;font-size:13px;font-weight:600;text-align:right;border-bottom:1px solid var(--ol2);color:${diff&&win1?'var(--S)':'var(--t1)'}">${v1}</td><td style="padding:7px 10px;font-size:13px;font-weight:600;text-align:right;border-bottom:1px solid var(--ol2);color:${diff&&win2?'var(--S)':'var(--t1)'}">${v2}</td></tr>`;
+  };
+  document.getElementById('cmp-result').innerHTML=`
+    <table style="width:100%;border-collapse:collapse;background:var(--su);border-radius:10px;overflow:hidden;box-shadow:var(--sh)">
+      <thead><tr style="background:var(--P)"><th style="padding:9px 10px;font-size:12px;color:#fff;text-align:left">Metric</th><th style="padding:9px 10px;font-size:12px;color:#fff;text-align:right">${esc(q1.isInvoice?q1.invoiceId:q1.id)}</th><th style="padding:9px 10px;font-size:12px;color:#fff;text-align:right">${esc(q2.isInvoice?q2.invoiceId:q2.id)}</th></tr></thead>
+      <tbody>
+        ${row('Customer',cu1?.company||'—',cu2?.company||'—','none')}
+        ${row('Status',q1.status,q2.status,'none')}
+        ${row('Items',(q1.items||[]).length,(q2.items||[]).length)}
+        ${row('Subtotal',fmt(t1.sub),fmt(t2.sub))}
+        ${row('Discount',fmt(t1.discAmt),fmt(t2.discAmt),'lower')}
+        ${row('Tax',fmt(t1.taxAmt),fmt(t2.taxAmt),'none')}
+        ${row('Total',fmt(t1.total),fmt(t2.total))}
+        ${row('Cost',fmt(t1.cost),fmt(t2.cost),'lower')}
+        ${row('Margin',Math.round(t1.margin*100)+'%',Math.round(t2.margin*100)+'%')}
+        ${row('Valid Until',fmtDate(q1.validUntil),fmtDate(q2.validUntil),'none')}
+      </tbody>
+    </table>`;
+}
+
+// ── NOTIFICATION REMINDERS ───────────────────────────────
+function requestNotifPermission(){
+  if(!('Notification' in window))return Promise.resolve('denied');
+  if(Notification.permission==='granted')return Promise.resolve('granted');
+  return Notification.requestPermission();
+}
+function scheduleExpiryReminder(qid){
+  const q=DB.quotes.find(x=>x.id===qid);if(!q)return;
+  requestNotifPermission().then(perm=>{
+    if(perm!=='granted'){snack('Enable notifications in browser settings');return;}
+    const due=new Date(q.validUntil);due.setDate(due.getDate()-1);
+    const delay=due-new Date();if(delay<0){snack('Quote already expired or expires today');return;}
+    setTimeout(()=>{
+      const cu=getCust(q.customerId);
+      new Notification('Quote Expiring Tomorrow',{body:`${q.isInvoice?q.invoiceId:q.id} for ${cu?.company||'Unknown'} — ${fmt(calcTotals(q).total)}`,icon:'./icon-192.svg'});
+    },delay);
+    q.reminderSet=true;save();snack('Reminder set for '+fmtDate(due.toISOString().slice(0,10)));
+  });
+}
+
+// ── PATCH: acSearch to show smart pricing and bundles ────
+const _origAcSearch=acSearch;
+window.acSearchWithBundles=function(i,query){
+  const drop=document.getElementById('ac-drop-'+i);if(!drop)return;
+  const q=query.trim().toLowerCase();if(!q){drop.style.display='none';return;}
+  const bundles=(DB.settings.bundles||[]).filter(b=>b.name.toLowerCase().includes(q));
+  const prods=acoInv().map(p=>{const nm=p.name.toLowerCase(),id=p.id.toLowerCase(),ds=(p.description||'').toLowerCase();let sc=0;if(nm.startsWith(q))sc=3;else if(nm.includes(q))sc=2;else if(id.includes(q))sc=1;else if(ds.includes(q))sc=0.5;return{p,sc};}).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,7);
+  const custId=qeD.customerId;
+  let html='';
+  bundles.slice(0,3).forEach(b=>{
+    html+=`<div class="ac-item" style="background:var(--PC)" onclick="acSelectBundle(${i},'${b.id}')"><span class="material-icons-round" style="color:var(--P);font-size:18px">inventory_2</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(b.name)} <span style="font-size:10px;font-weight:700;background:var(--P);color:#fff;border-radius:4px;padding:1px 5px">BUNDLE</span></div><div style="font-size:11px;color:var(--t2)">${(b.items||[]).length} products</div></div></div>`;
+  });
+  prods.forEach(({p})=>{
+    const price=p.unitCost*(1+p.markup);const nm=p.name;const idx=nm.toLowerCase().indexOf(q);
+    const hl=idx>=0?esc(nm.slice(0,idx))+'<b>'+esc(nm.slice(idx,idx+q.length))+'</b>'+esc(nm.slice(idx+q.length)):esc(nm);
+    const mg=Math.round(productMargin(p)*100);const mgCol=mg<Math.round(DB.settings.minMargin*100)?'var(--E)':mg<Math.round(DB.settings.warnMargin*100)?'var(--W)':'var(--S)';
+    const lastPrice=custId?getLastPriceForProduct(custId,p.id):null;
+    html+=`<div class="ac-item" onclick="acSelect(${i},'${p.id}')"><div style="flex:1"><div style="font-size:13px;font-weight:600">${hl}</div><div style="font-size:11px;color:var(--t2)">${esc(p.id)} · ${esc(p.category)}${p.trackStock&&p.stock!=null?' · Stock: '+p.stock:''}</div>${lastPrice?`<div style="font-size:10px;color:var(--P);font-weight:600">Last quoted: ${fmt(lastPrice.price)} (${lastPrice.quoteId})</div>`:''}</div><div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--P)">${fmt(price)}</div><div style="font-size:10px;color:${mgCol};font-weight:600">${mg}% margin</div></div></div>`;
+  });
+  if(!html)html=`<div class="ac-item ac-custom" onclick="acSelectCustom(${i},this.dataset.q)" data-q="${esc(query)}"><span class="material-icons-round" style="font-size:18px;color:var(--P)">add_circle</span><div><div style="font-size:13px;font-weight:600">Use "${esc(query)}" as custom item</div></div></div>`;
+  drop.innerHTML=html;drop.style.display='block';
+};
+function acSelectBundle(i,bundleId){
+  const items=expandBundleIntoItems(bundleId);if(!items.length)return;
+  // Replace current empty item with all bundle items
+  qeD.items.splice(i,1,...items);
+  document.getElementById('ac-drop-'+i).style.display='none';
+  renderQEItems();hap(15);snack('Bundle expanded into '+items.length+' items');
+}
+// Override acSearch to use bundle-aware version
+window.acSearch=window.acSearchWithBundles;
+
+// ── DISCOUNT APPROVAL RULES ───────────────────────────────
+DB.settings.maxDiscountPct=DB.settings.maxDiscountPct||100;
+function checkDiscountLimit(){
+  const maxD=(DB.settings.maxDiscountPct||100)/100;
+  const overallDisc=(parseFloat(v('qe-disc'))||0)/100;
+  const lineOverDisc=(qeD.items||[]).some(li=>(li.discount||0)>maxD);
+  if(overallDisc>maxD||lineOverDisc){
+    qeD.status='Pending Approval';snack('Discount exceeds limit — submitted for approval');return true;
+  }
+  return false;
+}
+
+// ── INIT EXTENSIONS ──────────────────────────────────────
+const _origInit=window.init;
+window.init=async function(){
+  await _origInit();
+  // Patch qeSave to check discount limits and apply smart pricing notice
+  const _origQESave=window.qeSave;
+  window.qeSave=function(){checkDiscountLimit();_origQESave();};
+  // Patch renderQuotes to support bulk mode and long-press
+  const _origRenderQ=window.renderQuotes;
+  window.renderQuotes=function(){
+    _origRenderQ();
+    const el=document.getElementById('q-list');
+    if(el)initLongPress(el);
+  };
+  // Patch renderDash to animate counters
+  const _origRDash=window.renderDash;
+  window.renderDash=function(){
+    _origRDash();
+    // Animate metric values
+    setTimeout(()=>{
+      document.querySelectorAll('.mv').forEach(el=>{
+        const n=parseFloat(el.textContent.replace(/[^0-9.]/g,''));
+        if(!isNaN(n)&&n>0&&n<100000)animateCounter(el,n,700);
+      });
+    },50);
+    // Show recurring alerts
+    const recAlerts=getRecurringAlerts();
+    const alertsEl=document.getElementById('d-alerts');
+    if(alertsEl&&recAlerts.length){
+      const extra=recAlerts.map(q=>{const cu=getCust(q.customerId);return`<div class="alert-card info" onclick="openQD('${q.id}')"><div style="display:flex;align-items:center;gap:10px"><span class="material-icons-round" style="color:var(--P);font-size:20px">autorenew</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(cu?.company||'?')} — Renewal Due</div><div style="font-size:12px;color:var(--t2)">${esc(q.recurring?.interval||'')} · ${fmt(calcTotals(q).total)}</div></div><span class="material-icons-round" style="color:var(--t3)">chevron_right</span></div></div>`;}).join('');
+      alertsEl.insertAdjacentHTML('afterbegin',extra);
+    }
+  };
+  // Patch openQAct to include new actions
+  const _origOpenQAct=window.openQAct;
+  window.openQAct=function(qid){
+    _origOpenQAct(qid);
+    const q=DB.quotes.find(x=>x.id===qid||x.id===curQID);if(!q)return;
+    const body=document.getElementById('qact-body');if(!body)return;
+    const extra=`
+      <div class="si" onclick="openRecurringSetup('${q.id}');closeDlg('dlg-qact')"><div class="si-ic"><span class="material-icons-round">autorenew</span></div><div class="si-tx"><div class="si-m">Recurring Setup</div><div class="si-s">${q.recurring?.enabled?'Enabled: '+q.recurring.interval:'Not set'}</div></div></div>
+      <div class="si" onclick="scheduleExpiryReminder('${q.id}');closeDlg('dlg-qact')"><div class="si-ic"><span class="material-icons-round">notifications</span></div><div class="si-tx"><div class="si-m">Set Expiry Reminder</div><div class="si-s">Notify 1 day before expiry</div></div></div>
+      <div class="si" onclick="openRichNotes('${q.id}');closeDlg('dlg-qact')"><div class="si-ic"><span class="material-icons-round">edit_note</span></div><div class="si-tx"><div class="si-m">Edit Notes (Rich Text)</div></div></div>
+      <div class="si" onclick="printQuote('${q.id}');closeDlg('dlg-qact')"><div class="si-ic"><span class="material-icons-round">print</span></div><div class="si-tx"><div class="si-m">Print Quote</div><div class="si-s">Via browser print dialog</div></div></div>
+      ${navigator.onLine?'':`<div class="si" onclick="queuePDFExport('${q.id}');closeDlg('dlg-qact')"><div class="si-ic"><span class="material-icons-round">schedule_send</span></div><div class="si-tx"><div class="si-m">Queue PDF Export</div><div class="si-s">Will download when online</div></div></div>`}
+      ${q.status==='Draft'?`<div class="si" onclick="submitForApproval('${q.id}');closeDlg('dlg-qact')"><div class="si-ic"><span class="material-icons-round">approval</span></div><div class="si-tx"><div class="si-m">Submit for Approval</div></div></div>`:''}
+      ${q.status==='Pending Approval'?`<div class="si" onclick="approveQuote('${q.id}');closeDlg('dlg-qact')"><div class="si-ic grn"><span class="material-icons-round">check_circle</span></div><div class="si-tx"><div class="si-m">Approve Quote</div></div></div><div class="si" onclick="rejectQuote('${q.id}');closeDlg('dlg-qact')"><div class="si-ic red"><span class="material-icons-round">cancel</span></div><div class="si-tx"><div class="si-m">Reject / Return</div></div></div>`:''}`;
+    body.insertAdjacentHTML('beforeend',extra);
+  };
+  // Add customer statement link into customer editor
+  const _origOpenCustEd=window.openCustEd;
+  window.openCustEd=function(id,fromQE){
+    _origOpenCustEd(id,fromQE);
+    if(id){
+      const body=document.getElementById('cust-body');if(!body)return;
+      body.insertAdjacentHTML('beforeend',`<div style="margin-top:8px"><button class="btn btn-ton btn-w" onclick="openCustomerStatement('${id}')"><span class="material-icons-round">summarize</span> View Statement</button></div>`);
+    }
+  };
+  // Flushqe offline queue if online
+  if(navigator.onLine)flushPDFQueue();
+};
+// ═══════════════════════════════════════════════════
+// v5 FORM SAVE FIXES + REMAINING FEATURE COMPLETIONS
+// ═══════════════════════════════════════════════════
+
+// ── FIXED: saveInv — properly reads all fields including stock toggle ──
+function saveInv() {
+  const id = v('ii-id'), nm = v('ii-nm');
+  if (!id || !nm) { snack('ID and name required'); return; }
+  if (!editInvId && DB.inventory.find(i => i.id === id)) { snack('Product ID already exists — use a unique ID'); return; }
+  const trackStock = !!document.getElementById('ii-track')?.classList.contains('on');
+  const stockVal = trackStock ? (parseInt(v('ii-stock')) || 0) : null;
+  const item = {
+    id, name: nm,
+    description: v('ii-desc'),
+    category: v('ii-cat') || getCategories()[0],
+    unitCost: parseFloat(v('ii-cost')) || 0,
+    markup: (parseFloat(v('ii-mkup')) || 30) / 100,
+    trackStock, stock: stockVal,
+    companyId: (activeCo() || {}).id
+  };
+  const idx = DB.inventory.findIndex(i => i.id === id);
+  if (idx >= 0) DB.inventory[idx] = item; else DB.inventory.push(item);
+  save(); closeDlg('dlg-inv'); renderInv(); snack('✓ Product saved'); hap(20);
+}
+
+// ── FIXED: saveCust — validates all required fields + duplicate ID guard ──
+function saveCust() {
+  const id = v('ci-id'), co = v('ci-co');
+  if (!id) { snack('Customer ID is required'); return; }
+  if (!co) { snack('Company name is required'); return; }
+  if (!editCustId && DB.customers.find(c => c.id === id)) { snack('Customer ID already exists — use a unique ID'); return; }
+  const cust = {
+    id, company: co,
+    contact: v('ci-cnt'),
+    email: v('ci-em'),
+    phone: v('ci-ph'),
+    address: v('ci-addr'),
+    industry: v('ci-ind'),
+    tier: v('ci-tier') || 'Bronze',
+    taxPin: v('ci-pin'),
+    companyId: (activeCo() || {}).id,
+    ltv: getCust(id)?.ltv || 0
+  };
+  const idx = DB.customers.findIndex(c => c.id === id);
+  if (idx >= 0) DB.customers[idx] = cust; else DB.customers.push(cust);
+  save(); closeDlg('dlg-cust'); renderCusts(); snack('✓ Customer saved'); hap(20);
+}
+
+// ── FIXED: saveCo — validates name, collects all payment methods, logo ──
+function saveCo() {
+  const name = v('co-nm');
+  if (!name) { snack('Company name is required'); return; }
+  const id = editCoId || 'CO-' + uid().slice(0, 6).toUpperCase();
+  const logoColEl = document.getElementById('logo-col');
+  const co = {
+    id, name,
+    tagline: v('co-tag'),
+    address: v('co-addr'),
+    phone: v('co-ph'),
+    email: v('co-em'),
+    website: v('co-web'),
+    taxPin: v('co-pin'),
+    paymentMethods: collectPMs(),
+    paymentTerms: v('co-pterms') || 'Net 30',
+    terms: v('co-tc'),
+    logoText: v('co-lt') || name[0].toUpperCase(),
+    logoColor: logoColEl ? logoColEl.value : '#1A73E8',
+    logoImg: document.getElementById('co-img')?.value || null
+  };
+  const idx = DB.companies.findIndex(c => c.id === id);
+  if (idx >= 0) DB.companies[idx] = co;
+  else { DB.companies.push(co); if (!DB.settings.activeCompanyId) DB.settings.activeCompanyId = id; }
+  save(); closeDlg('dlg-co'); renderSettings(); snack('✓ Company profile saved'); hap(20);
+}
+
+// ── FIXED: saveSp — validates, saves signature, handles missing company ──
+function saveSp() {
+  const id = v('sp-id'), name = v('sp-nm');
+  if (!id) { snack('Salesperson ID is required'); return; }
+  if (!name) { snack('Name is required'); return; }
+  if (!editSpId && DB.salespeople.find(s => s.id === id)) { snack('Salesperson ID already exists'); return; }
+  const sp = {
+    id, name,
+    title: v('sp-ttl2'),
+    email: v('sp-em'),
+    phone: v('sp-ph'),
+    companyId: v('sp-coid') || DB.settings.activeCompanyId || '',
+    signatureImg: document.getElementById('sp-sig-img')?.value || ''
+  };
+  const idx = DB.salespeople.findIndex(s => s.id === id);
+  if (idx >= 0) DB.salespeople[idx] = sp; else DB.salespeople.push(sp);
+  save(); closeDlg('dlg-spe'); renderSPList(); renderSettings(); snack('✓ Salesperson saved'); hap(20);
+}
+
+// ── FIXED: qeSave — full validation with helpful field errors ──
+function qeSave() {
+  collectQE(qeStep);
+  if (!qeD.companyId) { snack('Select a company profile first'); qeStep = 0; renderQEStep(); return; }
+  if (!qeD.customerId) { snack('Select a customer first'); qeStep = 1; renderQEStep(); return; }
+  if (!qeD.items || !qeD.items.length) { snack('Add at least one line item'); qeStep = 2; renderQEStep(); return; }
+  const emptyItems = qeD.items.filter(li => !li.desc && !li.itemId);
+  if (emptyItems.length) { snack('Remove or fill in all empty line items'); qeStep = 2; renderQEStep(); return; }
+  const zeroItems = qeD.items.filter(li => !li.unitPrice);
+  if (zeroItems.length) { snack('Some items have zero price — is that correct?', 'Save Anyway', () => _doQESave()); return; }
+  _doQESave();
+}
+function _doQESave() {
+  // Discount limit check
+  const maxD = (DB.settings.maxDiscountPct || 100) / 100;
+  const lineOver = (qeD.items || []).some(li => (li.discount || 0) > maxD);
+  const overallOver = (qeD.discount || 0) > maxD;
+  if (lineOver || overallOver) {
+    qeD.status = 'Pending Approval';
+    logActivity(qeD, 'Auto-submitted for approval: discount exceeds limit');
+    snack('Discount exceeds limit — submitted for manager approval');
+  }
+  const isNew = !DB.quotes.find(q => q.id === qeD.id);
+  if (!isNew) logActivity(qeD, 'Quote edited');
+  const idx = DB.quotes.findIndex(q => q.id === qeD.id);
+  if (idx >= 0) DB.quotes[idx] = qeD; else DB.quotes.unshift(qeD);
+  if (qeD.status === 'Won') updateLTV(qeD.customerId);
+  // Deduct stock for new quotes only
+  if (isNew) {
+    (qeD.items || []).forEach(li => {
+      const p = getProd(li.itemId);
+      if (p && p.trackStock && p.stock != null) p.stock = Math.max(0, p.stock - (li.qty || 1));
+    });
+  }
+  save(); closeDlg('dlg-qe'); renderPage(curPage);
+  snack(qeD.id + ' saved ✓'); hap(20); updateNavBadges();
+  setTimeout(() => openQD(qeD.id), 360);
+}
+
+// ── FIXED: saveSetSheet — all setting types handled with validation ──
+function saveSetSheet() {
+  const s = DB.settings;
+  if (setType === 'quote') {
+    const pfx = v('ss-pfx').trim(); if (!pfx) { snack('Quote prefix cannot be empty'); return; }
+    s.quotePrefix = pfx;
+    s.invoicePrefix = v('ss-invpfx').trim() || 'INV-';
+    s.quoteValidDays = Math.max(1, parseInt(v('ss-vd')) || 30);
+    s.followUpDays = Math.max(1, parseInt(v('ss-fu')) || 7);
+    s.taxRate = (parseFloat(v('ss-tax')) || 16) / 100;
+    s.taxLabel = v('ss-taxlbl').trim() || 'VAT';
+    s.currencySymbol = v('ss-curr').trim() || 'KSh';
+  } else if (setType === 'margin') {
+    const minM = parseFloat(v('ss-mm')) || 20;
+    const warnM = parseFloat(v('ss-wm')) || 25;
+    if (minM >= warnM) { snack('Warning margin must be higher than minimum margin'); return; }
+    s.minMargin = minM / 100; s.warnMargin = warnM / 100;
+  } else if (setType === 'categories') {
+    const inputs = document.querySelectorAll('[id^="cat-item-"]');
+    const cats = Array.from(inputs).map(el => el.value.trim()).filter(Boolean);
+    if (!cats.length) { snack('Need at least one category'); return; }
+    s.productCategories = [...new Set(cats)]; // deduplicate
+  } else if (setType === 'download') {
+    s.dlIncludeVersion = !!document.getElementById('ss-dlv')?.classList.contains('on');
+  } else if (setType === 'dashboard') {
+    if (!s.dashSections) s.dashSections = {};
+    ['alerts','chart','pipeline','recent'].forEach(k => {
+      s.dashSections[k] = !!document.getElementById('ds-' + k)?.classList.contains('on');
+    });
+  } else if (setType === 'discount') {
+    const maxD = parseFloat(v('ss-maxd')) || 100;
+    if (maxD < 0 || maxD > 100) { snack('Discount must be 0–100'); return; }
+    s.maxDiscountPct = maxD;
+  }
+  save(); closeDlg('dlg-set'); renderSettings(); snack('✓ Settings saved'); hap(15);
+}
+
+// ── FIXED: savePayment — validates amount vs total ──
+function savePayment(qid) {
+  const q = DB.quotes.find(x => x.id === qid); if (!q) return;
+  const tots = calcTotals(q);
+  const status = v('pay-status') || 'Unpaid';
+  const amt = parseFloat(v('pay-amt')) || 0;
+  if (amt < 0) { snack('Amount paid cannot be negative'); return; }
+  if (amt > tots.total) { snack('Amount paid exceeds invoice total'); return; }
+  if (!q.payment) q.payment = {};
+  q.payment.status = status;
+  q.payment.amountPaid = status === 'Paid' ? tots.total : amt;
+  // Auto-correct status
+  if (q.payment.amountPaid >= tots.total) q.payment.status = 'Paid';
+  else if (q.payment.amountPaid > 0) q.payment.status = 'Partially Paid';
+  else q.payment.status = 'Unpaid';
+  logActivity(q, `Payment: ${q.payment.status} — ${fmt(q.payment.amountPaid)}`);
+  save(); closeDlg('dlg-set'); closeDlg('dlg-qd'); openQD(qid);
+  snack('✓ Payment updated'); hap(15);
+}
+
+// ── FIXED: saveRecurring — validates date ──
+function saveRecurring(qid) {
+  const q = DB.quotes.find(x => x.id === qid); if (!q) return;
+  const enabled = !!document.getElementById('rec-tog')?.classList.contains('on');
+  const interval = v('rec-interval') || 'annually';
+  const nextDate = v('rec-date');
+  if (enabled && !nextDate) { snack('Set the next renewal date'); return; }
+  q.recurring = { enabled, interval, nextDate };
+  logActivity(q, 'Recurring: ' + (enabled ? interval + ' from ' + nextDate : 'disabled'));
+  save(); closeDlg('dlg-set'); snack('✓ Recurring settings saved'); hap(15);
+}
+
+// ── FIXED: saveSigPad — checks canvas is not blank ──
+function saveSigPad(spId) {
+  const c = document.getElementById('sig-canvas'); if (!c) return;
+  // Check not blank
+  const ctx = c.getContext('2d');
+  const data = ctx.getImageData(0, 0, c.width, c.height).data;
+  const hasContent = data.some((v, i) => i % 4 === 3 && v > 0);
+  if (!hasContent) { snack('Please draw your signature first'); return; }
+  const dataUrl = c.toDataURL('image/png');
+  const sp = getSP(spId);
+  if (sp) { sp.signatureImg = dataUrl; save(); snack('✓ Signature saved'); hap(20); }
+  closeDlg('dlg-set');
+}
+
+// ── FIXED: saveBundle — full validation ──
+function saveBundle(id) {
+  const name = v('bnd-nm');
+  if (!name) { snack('Bundle name is required'); return; }
+  const container = document.getElementById('bnd-items'); if (!container) return;
+  const itemDivs = [...container.querySelectorAll('[data-itemid]')];
+  const items = itemDivs.map((el, i) => ({
+    itemId: el.dataset.itemid,
+    qty: Math.max(1, parseInt(document.getElementById('bnd-qty-' + i)?.value) || 1)
+  })).filter(x => x.itemId);
+  if (!items.length) { snack('Add at least one product to the bundle'); return; }
+  if (!DB.settings.bundles) DB.settings.bundles = [];
+  const bundle = { id: id || 'BND-' + uid().slice(0, 6).toUpperCase(), name, description: v('bnd-desc'), items };
+  const idx = DB.settings.bundles.findIndex(b => b.id === bundle.id);
+  if (idx >= 0) DB.settings.bundles[idx] = bundle; else DB.settings.bundles.push(bundle);
+  save(); openBundleManager(); snack('✓ Bundle saved'); hap(20);
+}
+
+// ── FIXED: saveCQF — deduplicates and trims ──
+function saveCQF() {
+  const inputs = document.querySelectorAll('[id^="cqf-"]');
+  const fields = [...new Set(Array.from(inputs).map(el => el.value.trim()).filter(Boolean))];
+  DB.settings.customQuoteFields = fields;
+  save(); closeDlg('dlg-set'); renderSettings(); snack('✓ Custom fields saved'); hap(15);
+}
+
+// ── FIXED: saveRichNotes — strips dangerous tags ──
+function saveRichNotes(qid) {
+  const q = DB.quotes.find(x => x.id === qid); if (!q) return;
+  const el = document.getElementById('rtn-editor'); if (!el) return;
+  // Allow only safe inline HTML
+  const allowed = el.innerHTML
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
+    .replace(/javascript:/gi, '');
+  q.notes = allowed;
+  logActivity(q, 'Notes updated (rich text)');
+  save(); closeDlg('dlg-set'); closeDlg('dlg-qd'); openQD(qid); snack('✓ Notes saved'); hap(15);
+}
+
+// ── OPEN SETTINGS SHEET — add discount type ──
+const _origOpenSetSheet = window.openSetSheet;
+window.openSetSheet = function(type) {
+  if (type === 'discount') {
+    setType = 'discount';
+    document.getElementById('set-ttl').textContent = 'Discount Approval Rules';
+    document.getElementById('set-body').innerHTML = `
+      <div style="background:var(--su2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--t2);line-height:1.7">
+        Set the maximum discount % a salesperson can apply. Any quote exceeding this is automatically submitted for manager approval.
+      </div>
+      <div class="fg">
+        <label class="fl">Maximum Discount % (0 = no discount allowed, 100 = unlimited)</label>
+        <input class="fi" type="number" id="ss-maxd" value="${DB.settings.maxDiscountPct || 100}" min="0" max="100" step="1">
+      </div>
+      <div style="font-size:12px;color:var(--t2)">Current: ${DB.settings.maxDiscountPct || 100}%</div>`;
+    openDlg('dlg-set'); pushNav('settings-discount');
+  } else {
+    _origOpenSetSheet(type);
+  }
+};
+
+// ── EXPORT SHEET — open export options ──
+function openExportSheet() {
+  document.getElementById('set-ttl').textContent = 'Export Data';
+  document.getElementById('set-body').innerHTML = `
+    <div style="font-size:13px;color:var(--t2);margin-bottom:14px">Export your data as CSV files readable in Excel, Google Sheets, or any spreadsheet app.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn bp btn-w" onclick="exportToXLSX('quotes')"><span class="material-icons-round">table_chart</span> Export Quotes to CSV</button>
+      <button class="btn bp btn-w" onclick="exportToXLSX('customers')"><span class="material-icons-round">people</span> Export Customers to CSV</button>
+      <button class="btn bp btn-w" onclick="exportToXLSX('inventory')"><span class="material-icons-round">inventory_2</span> Export Products to CSV</button>
+      <div style="height:1px;background:var(--ol2)"></div>
+      <button class="btn bo btn-w" onclick="exportData()"><span class="material-icons-round">download</span> Full JSON Backup</button>
+      <button class="btn bo btn-w" onclick="importData()"><span class="material-icons-round">upload</span> Restore from JSON Backup</button>
+    </div>`;
+  openDlg('dlg-set'); pushNav('export');
+}
+
+// ── IMPORT SHEET ──
+function openImportSheet() {
+  document.getElementById('set-ttl').textContent = 'Import from CSV';
+  document.getElementById('set-body').innerHTML = `
+    <div style="font-size:13px;color:var(--t2);margin-bottom:14px">Import products or customers from a CSV file. First row must be the header row.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn bp btn-w" onclick="openCSVImport('inventory')"><span class="material-icons-round">inventory_2</span> Import Products from CSV</button>
+      <button class="btn bp btn-w" onclick="openCSVImport('customers')"><span class="material-icons-round">people</span> Import Customers from CSV</button>
+    </div>`;
+  openDlg('dlg-set'); pushNav('import');
+}
+
+// ── MORE MENU — updated with all new options ──
+function openMore() {
+  document.getElementById('more-body').innerHTML = `
+    <div class="si" onclick="openAnalytics();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">analytics</span></div><div class="si-tx"><div class="si-m">Sales Analytics</div></div></div>
+    <div class="si" onclick="openTemplates();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">bookmark</span></div><div class="si-tx"><div class="si-m">Quote Templates</div></div></div>
+    <div class="si" onclick="openCompare();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">compare_arrows</span></div><div class="si-tx"><div class="si-m">Compare Quotes</div></div></div>
+    <div class="si" onclick="openBundleManager();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">inventory_2</span></div><div class="si-tx"><div class="si-m">Product Bundles</div></div></div>
+    <div class="si" onclick="openCustomFieldsManager();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">tune</span></div><div class="si-tx"><div class="si-m">Custom Quote Fields</div></div></div>
+    <div class="si" onclick="openImportSheet();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">upload_file</span></div><div class="si-tx"><div class="si-m">Import from CSV</div></div></div>
+    <div class="si" onclick="openExportSheet();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">download</span></div><div class="si-tx"><div class="si-m">Export Data</div></div></div>
+    <div class="si" onclick="openSetSheet('dashboard');closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">dashboard_customize</span></div><div class="si-tx"><div class="si-m">Dashboard Sections</div></div></div>
+    <div class="si" onclick="toggleTheme();closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">dark_mode</span></div><div class="si-tx"><div class="si-m">Toggle Dark Mode</div></div></div>
+    <div class="si" onclick="go('settings');closeDlg('dlg-more')"><div class="si-ic"><span class="material-icons-round">settings</span></div><div class="si-tx"><div class="si-m">Settings</div></div></div>`;
+  openDlg('dlg-more');
+}
+
+// ── RENDER SETTINGS — add new rows ──
+const _origRenderSettings = window.renderSettings;
+window.renderSettings = function() {
+  _origRenderSettings();
+  // Inject extra settings rows if containers exist
+  const extraCard = document.getElementById('settings-extra-card');
+  if (extraCard) {
+    extraCard.innerHTML = `
+      <div class="si" onclick="openSetSheet('discount')"><div class="si-ic ora"><span class="material-icons-round">percent</span></div><div class="si-tx"><div class="si-m">Discount Approval Rules</div><div class="si-s">Max discount: ${DB.settings.maxDiscountPct || 100}%</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openCustomFieldsManager()"><div class="si-ic"><span class="material-icons-round">tune</span></div><div class="si-tx"><div class="si-m">Custom Quote Fields</div><div class="si-s">${(DB.settings.customQuoteFields || []).length} field(s)</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openBundleManager()"><div class="si-ic"><span class="material-icons-round">inventory_2</span></div><div class="si-tx"><div class="si-m">Product Bundles</div><div class="si-s">${(DB.settings.bundles || []).length} bundle(s)</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>`;
+  }
+};
+
+// ── CUSTOM QUOTE FIELDS IN QE STEP 0 ──
+const _origRenderQE0 = window.renderQE0;
+window.renderQE0 = function(body) {
+  _origRenderQE0(body);
+  const fields = DB.settings.customQuoteFields || [];
+  if (!fields.length) return;
+  const existing = qeD.customFields || {};
+  const extra = document.createElement('div');
+  extra.innerHTML = `<div style="height:1px;background:var(--ol2);margin:4px 0 12px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Custom Fields</div>
+    ${fields.map(f => `<div class="fg"><label class="fl">${esc(f)}</label><input class="fi" id="cqf-val-${esc(f).replace(/\s/g,'_')}" value="${esc(existing[f] || '')}" placeholder="${esc(f)}"></div>`).join('')}`;
+  body.appendChild(extra);
+};
+
+// Patch collectQE to also collect custom field values
+const _origCollectQE = window.collectQE;
+window.collectQE = function(step) {
+  _origCollectQE(step);
+  if (step === 0) {
+    const fields = DB.settings.customQuoteFields || [];
+    if (fields.length) {
+      if (!qeD.customFields) qeD.customFields = {};
+      fields.forEach(f => {
+        const el = document.getElementById('cqf-val-' + f.replace(/\s/g, '_'));
+        if (el) qeD.customFields[f] = el.value;
+      });
+    }
+  }
+};
+
+// ── SHOW CUSTOM FIELDS IN QUOTE DETAIL ──
+const _origOpenQD = window.openQD;
+window.openQD = function(qid) {
+  _origOpenQD(qid);
+  const q = DB.quotes.find(x => x.id === qid);
+  if (q && q.customFields && Object.keys(q.customFields).length) {
+    const body = document.getElementById('qd-body');
+    if (!body) return;
+    const block = `<div class="db2" style="margin-top:0">
+      <div class="dh2"><span class="dht">Custom Fields</span></div>
+      ${Object.entries(q.customFields).filter(([,v]) => v).map(([k, val]) =>
+        `<div class="dr"><span class="dk">${esc(k)}</span><span class="dv">${esc(val)}</span></div>`
+      ).join('')}
+    </div>`;
+    // Insert after first .db2
+    const firstBlock = body.querySelector('.db2');
+    if (firstBlock) firstBlock.insertAdjacentHTML('afterend', block);
+  }
+};
+
+// ── QUOTE DIFF VIEWER ──
+function openQuoteDiff(qid) {
+  const q = DB.quotes.find(x => x.id === qid); if (!q) return;
+  const hist = (q.history || []);
+  if (hist.length < 2) { snack('Need at least 2 snapshots to compare'); return; }
+  const a = hist[hist.length - 2], b = hist[hist.length - 1];
+  const allItemIds = [...new Set([...(a.items||[]).map(i=>i.itemId||i.desc),...(b.items||[]).map(i=>i.itemId||i.desc)])];
+  document.getElementById('set-ttl').textContent = 'Version Diff';
+  document.getElementById('set-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:12px">
+      <div style="padding:8px 12px;background:rgba(234,67,53,.08);border-radius:8px 0 0 8px;font-size:12px;font-weight:700;color:var(--E)">◀ ${esc(a.version||'v?')} — ${fmt(a.total)}</div>
+      <div style="padding:8px 12px;background:rgba(52,168,83,.08);border-radius:0 8px 8px 0;font-size:12px;font-weight:700;color:var(--S)">▶ ${esc(b.version||'v?')} — ${fmt(b.total)}</div>
+    </div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">Line Items</div>
+    ${allItemIds.map(itemId => {
+      const ai = (a.items||[]).find(i=>(i.itemId||i.desc)===itemId);
+      const bi = (b.items||[]).find(i=>(i.itemId||i.desc)===itemId);
+      const added = !ai && !!bi, removed = !!ai && !bi;
+      const changed = ai && bi && (ai.unitPrice !== bi.unitPrice || ai.qty !== bi.qty);
+      const bg = added ? 'rgba(52,168,83,.08)' : removed ? 'rgba(234,67,53,.08)' : changed ? 'rgba(249,171,0,.08)' : 'transparent';
+      const icon = added ? '➕' : removed ? '➖' : changed ? '✏️' : '✓';
+      const item = bi || ai;
+      return `<div style="background:${bg};border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px">${icon} ${esc(item.desc||item.itemId)}</div>
+        <div style="font-size:12px;text-align:right;color:var(--t2)">
+          ${ai?`<del style="color:var(--E)">${ai.qty}×${fmt(ai.unitPrice)}</del> `:''}
+          ${bi?`<span style="color:var(--S)">${bi.qty}×${fmt(bi.unitPrice)}</span>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <div style="background:var(--su2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--t2)">Old Total</div><div style="font-size:16px;font-weight:800;color:var(--E)">${fmt(a.total)}</div></div>
+      <div style="background:var(--su2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--t2)">New Total</div><div style="font-size:16px;font-weight:800;color:var(--S)">${fmt(b.total)}</div></div>
+    </div>
+    <div style="text-align:center;margin-top:8px;font-size:13px;color:${b.total>a.total?'var(--E)':'var(--S)'}">
+      ${b.total>a.total?'▲':'▼'} ${fmt(Math.abs(b.total-a.total))} ${b.total>a.total?'increase':'decrease'}
+    </div>`;
+  openDlg('dlg-set'); pushNav('diff-'+qid);
+}
+
+// Hook diff into revision history view
+const _origOpenRevHistory = window.openRevHistory;
+window.openRevHistory = function(qid) {
+  _origOpenRevHistory(qid);
+  const q = DB.quotes.find(x => x.id === qid);
+  if (q && (q.history||[]).length >= 2) {
+    const body = document.getElementById('rev-body');
+    if (body) {
+      const btn = document.createElement('div');
+      btn.style.cssText = 'padding:10px 16px;border-bottom:1px solid var(--ol2)';
+      btn.innerHTML = `<button class="btn btn-ton btn-w" onclick="openQuoteDiff('${qid}')"><span class="material-icons-round">compare_arrows</span> View Latest vs Previous (Diff)</button>`;
+      body.insertBefore(btn, body.firstChild);
+    }
+  }
+};
+
+// ── APPROVAL BADGE IN QUOTE STATUS CHIP ──
+// Patch chipCls to handle Pending Approval
+const _origChipCls = window.chipCls;
+window.chipCls = function(s) {
+  if (s === 'Pending Approval') return 'chip' + ' cs-Sent';
+  return _origChipCls(s);
+};
+
+// ── BULK MODE UI TOGGLE ──
+function renderBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  if (!bar) return;
+  bar.style.display = _bulkMode ? 'flex' : 'none';
+  const cnt = document.getElementById('bulk-count');
+  if (cnt) cnt.textContent = _bulkSelected.size + ' selected';
+}
+
+// ── ADD HAP CALLS TO EXISTING ACTIONS ──
+const _origSetQStat = window.setQStat;
+window.setQStat = function(qid, s) { hap(s === 'Won' ? 50 : 10); _origSetQStat(qid, s); };
+
+const _origDupQ = window.dupQ;
+window.dupQ = function(qid) { hap(15); _origDupQ(qid); };
+
