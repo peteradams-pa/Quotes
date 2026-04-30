@@ -116,7 +116,7 @@ function nextId(pfx,col,field='id'){
 
 // ── SEED DATA ──────────────────────────────────────────
 function seed(){
-  DB.companies=[{id:'CO-001',name:'Acme Corporation',tagline:'Enterprise Solutions',address:'123 Business Ave\nNairobi, Kenya 00100',phone:'+254 700 000 000',email:'sales@acme.co.ke',website:'www.acme.co.ke',taxPin:'P051234567A',paymentMethods:[{type:'Bank',bankName:'Equity Bank Kenya',accName:'Acme Corporation Ltd',accNum:'0123456789',branch:'Westlands Branch',swift:'EQBLKENA'},{type:'M-Pesa',paybillBusiness:'123456',paybillAccount:'Invoice No.',tillNumber:'',mpesaName:'Acme Corporation'}],paymentTerms:'Net 30',terms:'1. Payment is due within 30 days of invoice date.\n2. Late payments accrue 1.5% interest per month.\n3. All prices are in KSh and subject to change without notice.\n4. Goods remain property of Acme Corporation until full payment is received.',logoText:'A',logoColor:'#1A73E8',logoImg:null}];
+  DB.companies=[{id:'CO-001',name:'Acme Corporation',tagline:'Enterprise Solutions',address:'123 Business Ave\nNairobi, Kenya 00100',phone:'+254 700 000 000',email:'sales@acme.co.ke',website:'www.acme.co.ke',taxPin:'P051234567A',paymentMethods:[{type:'Bank',bankName:'Equity Bank Kenya',accName:'Acme Corporation Ltd',accNum:'0123456789',branch:'Westlands Branch',swift:'EQBLKENA'},{type:'M-Pesa Paybill',paybillBusiness:'123456',paybillAccount:'Invoice No.',mpesaName:'Acme Corporation'}],paymentTerms:'Net 30',terms:'1. Payment is due within 30 days of invoice date.\n2. Late payments accrue 1.5% interest per month.\n3. All prices are in KSh and subject to change without notice.\n4. Goods remain property of Acme Corporation until full payment is received.',logoText:'A',logoColor:'#1A73E8',logoImg:null}];
   DB.settings.activeCompanyId='CO-001';
   DB.salespeople=[{id:'SP-001',name:'Sarah Kamau',title:'Senior Sales Executive',email:'sarah@acme.co.ke',phone:'+254 711 000 001',companyId:'CO-001'},{id:'SP-002',name:'Mike Odhiambo',title:'Account Manager',email:'mike@acme.co.ke',phone:'+254 711 000 002',companyId:'CO-001'}];
   DB.customers=[{id:'CUS-001',companyId:'CO-001',company:'Nexus Technologies',contact:'Alex Chen',email:'alex@nexus.co.ke',phone:'+254 722 010 101',address:'Westlands, Nairobi',taxPin:'P051111111A',industry:'Technology',tier:'Gold',ltv:0},{id:'CUS-002',companyId:'CO-001',company:'Pinnacle Group',contact:'Maria Santos',email:'m.santos@pinnacle.co.ke',phone:'+254 722 010 102',address:'Upper Hill, Nairobi',taxPin:'P052222222A',industry:'Finance',tier:'Platinum',ltv:0},{id:'CUS-003',companyId:'CO-001',company:'Horizon Health',contact:'James Wright',email:'j.wright@horizon.co.ke',phone:'+254 722 010 103',address:'Karen, Nairobi',taxPin:'',industry:'Healthcare',tier:'Silver',ltv:0},{id:'CUS-004',companyId:'CO-001',company:'Summit Retail',contact:'Sarah Kim',email:'s.kim@summit.co.ke',phone:'+254 722 010 104',address:'CBD, Nairobi',taxPin:'',industry:'Retail',tier:'Bronze',ltv:0}];
@@ -866,15 +866,30 @@ function buildPreview(qid){
   const logoHTML=co?.logoImg?`<div class="qv-logo-img"><img src="${co.logoImg}" alt="logo"></div>`:`<div class="qv-logo-img" style="background:${co?.logoColor||ac}">${esc(co?.logoText||'A')}</div>`;
   const rows=(q.items||[]).map((li,i)=>{const lt=li.unitPrice*(li.qty||1)*(1-(li.discount||0));return`<tr><td>${i+1}.</td><td><div class="qv-tbl-desc">${esc(li.desc||li.itemId)}</div></td><td>${li.qty||1}</td><td>${fmtN(li.unitPrice)}</td><td>${li.discount?'−'+Math.round(li.discount*100)+'%':'—'}</td><td>${fmtN(lt)}</td></tr>`;}).join('');
   const pmHTML=(co?.paymentMethods||[]).map(pm=>{
-    if(pm.type==='Bank')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:${ac}">BANK TRANSFER</div>${pm.bankName?`<div class="qv-pay-row">Bank: <b>${esc(pm.bankName)}</b></div>`:''} ${pm.branch?`<div class="qv-pay-row">Branch: <b>${esc(pm.branch)}</b></div>`:''} ${pm.accName?`<div class="qv-pay-row">Account: <b>${esc(pm.accName)}</b></div>`:''} ${pm.accNum?`<div class="qv-pay-row">A/C No: <b>${esc(pm.accNum)}</b></div>`:''} ${pm.swift?`<div class="qv-pay-row">SWIFT: <b>${esc(pm.swift)}</b></div>`:''}</div>`;
-    if(pm.type==='M-Pesa Paybill')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA PAYBILL</div>${pm.paybillBusiness?`<div class="qv-pay-row">Paybill No: <b>${esc(pm.paybillBusiness)}</b></div>`:''} ${pm.paybillAccount?`<div class="qv-pay-row">Account: <b>${esc(pm.paybillAccount)}</b></div>`:''} ${pm.mpesaName?`<div class="qv-pay-row">Name: <b>${esc(pm.mpesaName)}</b></div>`:''}</div>`;
-    if(pm.type==='M-Pesa Till')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA TILL (BUY GOODS)</div>${pm.tillNumber?`<div class="qv-pay-row">Till No: <b>${esc(pm.tillNumber)}</b></div>`:''} ${pm.mpesaName?`<div class="qv-pay-row">Name: <b>${esc(pm.mpesaName)}</b></div>`:''}</div>`;
-    if(pm.type==='M-Pesa Send Money')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#4CAF50">M-PESA SEND MONEY</div>${pm.sendMoneyPhone?`<div class="qv-pay-row">Phone: <b>${esc(pm.sendMoneyPhone)}</b></div>`:''} ${pm.sendMoneyName?`<div class="qv-pay-row">Name: <b>${esc(pm.sendMoneyName)}</b></div>`:''} ${pm.sendMoneyRef?`<div class="qv-pay-row">Ref: ${esc(pm.sendMoneyRef)}</div>`:''}</div>`;
-    if(pm.type==='Pochi la Biashara')return`<div class="qv-pay-block"><div class="qv-pay-type" style="color:#1565C0">POCHI LA BIASHARA</div>${pm.pochiPhone?`<div class="qv-pay-row">Phone: <b>${esc(pm.pochiPhone)}</b></div>`:''} ${pm.pochiName?`<div class="qv-pay-row">Name: <b>${esc(pm.pochiName)}</b></div>`:''} ${pm.pochiRef?`<div class="qv-pay-row">Ref: ${esc(pm.pochiRef)}</div>`:''}</div>`;
-    return`<div class="qv-pay-block"><div class="qv-pay-type">${esc(pm.type)}</div><div class="qv-pay-row">${esc(pm.details||'')}</div></div>`;
+    const PR=(label,val,bold=true)=>val?`<div class="qv-pay-row">${label}: ${bold?`<b>${esc(val)}</b>`:esc(val)}</div>`:'';
+    if(pm.type==='Bank')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:${ac}">🏦 BANK TRANSFER</div>
+      ${PR('Bank',pm.bankName)}${PR('Branch',pm.branch)}${PR('Account Name',pm.accName)}${PR('Account No',pm.accNum)}${PR('SWIFT',pm.swift)}${PR('Reference',pm.bankRef,false)}</div>`;
+    if(pm.type==='M-Pesa Paybill')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:#2E7D32">📱 LIPA NA M-PESA — PAYBILL</div>
+      ${PR('Paybill No',pm.paybillBusiness)}${PR('Account No',pm.paybillAccount)}${PR('Business Name',pm.mpesaName)}</div>`;
+    if(pm.type==='M-Pesa Till')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:#2E7D32">📱 LIPA NA M-PESA — BUY GOODS</div>
+      ${PR('Till No',pm.tillNumber)}${PR('Store Name',pm.mpesaName)}${PR('Reference',pm.tillRef,false)}</div>`;
+    if(pm.type==='M-Pesa Send Money')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:#2E7D32">📱 M-PESA SEND MONEY</div>
+      ${PR('Phone No',pm.sendMoneyPhone)}${PR('Registered Name',pm.sendMoneyName)}${PR('Reference',pm.sendMoneyRef,false)}</div>`;
+    if(pm.type==='Pochi la Biashara')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:#1565C0">💼 POCHI LA BIASHARA</div>
+      ${PR('Phone No',pm.pochiPhone)}${PR('Business Name',pm.pochiName)}${PR('Reference',pm.pochiRef,false)}</div>`;
+    if(pm.type==='Cash')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:#6A1B9A">💵 CASH PAYMENT</div>
+      ${PR('Location',pm.cashLocation)}${PR('Contact',pm.cashContact,false)}${pm.details?`<div class="qv-pay-row">${esc(pm.details)}</div>`:''}</div>`;
+    if(pm.type==='Cheque')return`<div class="qv-pay-block">
+      <div class="qv-pay-type" style="color:#E65100">📄 CHEQUE PAYMENT</div>
+      ${PR('Payable To',pm.chequePayable)}${PR('Deliver To',pm.chequeAddress,false)}${pm.details?`<div class="qv-pay-row">${esc(pm.details)}</div>`:''}</div>`;
+    return`<div class="qv-pay-block"><div class="qv-pay-type">${esc(pm.otherName||pm.type)}</div>${pm.details?`<div class="qv-pay-row">${esc(pm.details)}</div>`:''}</div>`;
   }).join('');
-  const termsHTML=(co?.terms||'').split('\n').filter(t=>t.trim()).map((t,i)=>`<div style="display:flex;gap:8px;margin-bottom:4px"><span style="font-size:8pt;color:${ac};font-weight:700;flex-shrink:0;min-width:16px;line-height:1.7">${i+1}.</span><span style="font-size:8pt;color:#555;line-height:1.7">${esc(t.replace(/^\d+\.\s*/,''))}</span></div>`).join('');
-  const watermark={Won:'ACCEPTED',Lost:'DECLINED',Draft:'DRAFT'}[q.status]||'';
   const docEl=document.getElementById('prev-doc');
   docEl.innerHTML=`${watermark?`<div class="qv-wm">${watermark}</div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
@@ -1146,20 +1161,123 @@ function buildCoForm(co){
   setTimeout(wirePMSelects,50);
 }
 function pmCardHTML(pm,i){return`<div class="pmcard" id="pm-${i}"><div class="pmhead"><span class="pm-badge" id="pm-badge-${i}">${esc(pm.type)}</span><div style="flex:1">${buildCustomSelect({id:'pm-type-'+i,label:'Type',options:['Bank','M-Pesa Paybill','M-Pesa Till','M-Pesa Send Money','Pochi la Biashara','Cash','Cheque','Other'].map(t=>({value:t,label:t})),value:pm.type})}</div><button class="ib" style="width:30px;height:30px;color:var(--E)" onclick="removePM(${i})"><span class="material-icons-round" style="font-size:18px">delete</span></button></div><div id="pm-fields-${i}">${pmFieldsHTML(pm,i)}</div></div>`;}
-function pmFieldsHTML(pm,i){if(pm.type==='Bank')return`<div class="fr"><div class="fg"><label class="fl">Bank Name</label><input class="fi" id="pm-bank-${i}" value="${esc(pm.bankName||'')}" placeholder="Equity Bank Kenya"></div><div class="fg"><label class="fl">Branch</label><input class="fi" id="pm-branch-${i}" value="${esc(pm.branch||'')}" placeholder="Westlands"></div></div><div class="fr"><div class="fg"><label class="fl">Account Name</label><input class="fi" id="pm-accnm-${i}" value="${esc(pm.accName||'')}" placeholder="Company Ltd."></div><div class="fg"><label class="fl">Account No.</label><input class="fi" id="pm-accn-${i}" value="${esc(pm.accNum||'')}" placeholder="0123456789"></div></div><div class="fg"><label class="fl">SWIFT</label><input class="fi" id="pm-swift-${i}" value="${esc(pm.swift||'')}" placeholder="EQBLKENA"></div>`;if(pm.type==='M-Pesa')return`<div class="fr"><div class="fg"><label class="fl">Paybill No.</label><input class="fi" id="pm-pb-${i}" value="${esc(pm.paybillBusiness||'')}" placeholder="123456"></div><div class="fg"><label class="fl">Account Field</label><input class="fi" id="pm-pba-${i}" value="${esc(pm.paybillAccount||'')}" placeholder="Invoice No."></div></div><div class="fr"><div class="fg"><label class="fl">Till No.</label><input class="fi" id="pm-till-${i}" value="${esc(pm.tillNumber||'')}"></div><div class="fg"><label class="fl">M-Pesa Name</label><input class="fi" id="pm-mpnm-${i}" value="${esc(pm.mpesaName||'')}" placeholder="Company Name"></div></div>`;return`<div class="fg"><label class="fl">Details</label><textarea class="fi" id="pm-det-${i}">${esc(pm.details||'')}</textarea></div>`;}
+function pmFieldsHTML(pm,i){
+  const v=(id,fallback='')=>typeof pm[id]!=='undefined'?pm[id]:fallback;
+  /* ── BANK ── */
+  if(pm.type==='Bank') return `
+    <div class="fr">
+      <div class="fg"><label class="fl">Bank Name</label><input class="fi" id="pm-bank-${i}" value="${esc(pm.bankName||'')}" placeholder="e.g. Equity Bank Kenya"></div>
+      <div class="fg"><label class="fl">Branch</label><input class="fi" id="pm-branch-${i}" value="${esc(pm.branch||'')}" placeholder="e.g. Westlands"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Account Name</label><input class="fi" id="pm-accnm-${i}" value="${esc(pm.accName||'')}" placeholder="Registered account name"></div>
+      <div class="fg"><label class="fl">Account Number</label><input class="fi" id="pm-accn-${i}" value="${esc(pm.accNum||'')}" placeholder="0123456789"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">SWIFT / Sort Code</label><input class="fi" id="pm-swift-${i}" value="${esc(pm.swift||'')}" placeholder="e.g. EQBLKENA"></div>
+      <div class="fg"><label class="fl">Bank Reference (optional)</label><input class="fi" id="pm-bankref-${i}" value="${esc(pm.bankRef||'')}" placeholder="e.g. Invoice number"></div>
+    </div>`;
+
+  /* ── M-PESA PAYBILL ── */
+  if(pm.type==='M-Pesa Paybill') return `
+    <div style="background:#E8F5E9;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">📱</span>
+      <div><div style="font-size:12px;font-weight:700;color:#2E7D32">M-Pesa Paybill</div><div style="font-size:11px;color:#388E3C">Customer: Lipa na M-Pesa → Paybill</div></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Paybill Number *</label><input class="fi" id="pm-pb-${i}" value="${esc(pm.paybillBusiness||'')}" placeholder="e.g. 123456" type="tel"></div>
+      <div class="fg"><label class="fl">Account Number / Field *</label><input class="fi" id="pm-pba-${i}" value="${esc(pm.paybillAccount||'')}" placeholder="e.g. Invoice No."></div>
+    </div>
+    <div class="fg"><label class="fl">Business Name (as registered on M-Pesa)</label><input class="fi" id="pm-mpnm-${i}" value="${esc(pm.mpesaName||'')}" placeholder="e.g. Acme Corporation Ltd"></div>`;
+
+  /* ── M-PESA TILL (BUY GOODS) ── */
+  if(pm.type==='M-Pesa Till') return `
+    <div style="background:#E8F5E9;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">📱</span>
+      <div><div style="font-size:12px;font-weight:700;color:#2E7D32">M-Pesa Till — Buy Goods</div><div style="font-size:11px;color:#388E3C">Customer: Lipa na M-Pesa → Buy Goods & Services</div></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Till Number *</label><input class="fi" id="pm-till-${i}" value="${esc(pm.tillNumber||'')}" placeholder="e.g. 5012345" type="tel"></div>
+      <div class="fg"><label class="fl">Store / Business Name</label><input class="fi" id="pm-mpnm-${i}" value="${esc(pm.mpesaName||'')}" placeholder="e.g. Acme Store"></div>
+    </div>
+    <div class="fg"><label class="fl">Reference Instruction (optional)</label><input class="fi" id="pm-tillref-${i}" value="${esc(pm.tillRef||'')}" placeholder="e.g. Use invoice number as reference"></div>`;
+
+  /* ── M-PESA SEND MONEY ── */
+  if(pm.type==='M-Pesa Send Money') return `
+    <div style="background:#E8F5E9;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">📱</span>
+      <div><div style="font-size:12px;font-weight:700;color:#2E7D32">M-Pesa Send Money</div><div style="font-size:11px;color:#388E3C">Customer: M-Pesa → Send Money → Phone Number</div></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">M-Pesa Phone Number *</label><input class="fi" id="pm-smphone-${i}" value="${esc(pm.sendMoneyPhone||'')}" placeholder="+254 7xx xxx xxx" type="tel"></div>
+      <div class="fg"><label class="fl">Registered Name on M-Pesa *</label><input class="fi" id="pm-smnm-${i}" value="${esc(pm.sendMoneyName||'')}" placeholder="Full name as on M-Pesa"></div>
+    </div>
+    <div class="fg"><label class="fl">Reference / Description for Payer</label><input class="fi" id="pm-smref-${i}" value="${esc(pm.sendMoneyRef||'')}" placeholder="e.g. Include invoice number as reference"></div>`;
+
+  /* ── POCHI LA BIASHARA ── */
+  if(pm.type==='Pochi la Biashara') return `
+    <div style="background:#E3F2FD;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">💼</span>
+      <div><div style="font-size:12px;font-weight:700;color:#1565C0">Pochi la Biashara</div><div style="font-size:11px;color:#1976D2">Customer: M-Pesa → Pochi la Biashara → Phone Number</div></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Pochi Phone Number *</label><input class="fi" id="pm-pochphone-${i}" value="${esc(pm.pochiPhone||'')}" placeholder="+254 7xx xxx xxx" type="tel"></div>
+      <div class="fg"><label class="fl">Business / Owner Name *</label><input class="fi" id="pm-pochnm-${i}" value="${esc(pm.pochiName||'')}" placeholder="e.g. Acme Corporation"></div>
+    </div>
+    <div class="fg"><label class="fl">Reference Instruction for Payer</label><input class="fi" id="pm-pochref-${i}" value="${esc(pm.pochiRef||'')}" placeholder="e.g. State invoice number when sending"></div>`;
+
+  /* ── CASH ── */
+  if(pm.type==='Cash') return `
+    <div style="background:#F3E5F5;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">💵</span>
+      <div><div style="font-size:12px;font-weight:700;color:#6A1B9A">Cash Payment</div><div style="font-size:11px;color:#7B1FA2">Payment collected in cash</div></div>
+    </div>
+    <div class="fg"><label class="fl">Collection Address / Location</label><input class="fi" id="pm-cash-loc-${i}" value="${esc(pm.cashLocation||'')}" placeholder="e.g. Head Office, Westlands Nairobi"></div>
+    <div class="fg"><label class="fl">Contact Person</label><input class="fi" id="pm-cash-contact-${i}" value="${esc(pm.cashContact||'')}" placeholder="e.g. Finance Office"></div>
+    <div class="fg"><label class="fl">Cash Notes</label><textarea class="fi" id="pm-det-${i}" style="min-height:54px" placeholder="e.g. Receipt issued upon payment">${esc(pm.details||'')}</textarea></div>`;
+
+  /* ── CHEQUE ── */
+  if(pm.type==='Cheque') return `
+    <div style="background:#FFF8E1;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">📄</span>
+      <div><div style="font-size:12px;font-weight:700;color:#F57F17">Cheque Payment</div><div style="font-size:11px;color:#F9A825">Pay by cheque</div></div>
+    </div>
+    <div class="fg"><label class="fl">Cheque Payable To *</label><input class="fi" id="pm-chq-payable-${i}" value="${esc(pm.chequePayable||'')}" placeholder="e.g. Acme Corporation Ltd"></div>
+    <div class="fg"><label class="fl">Delivery Address for Cheque</label><input class="fi" id="pm-chq-addr-${i}" value="${esc(pm.chequeAddress||'')}" placeholder="Where to deliver / post the cheque"></div>
+    <div class="fg"><label class="fl">Additional Instructions</label><textarea class="fi" id="pm-det-${i}" style="min-height:54px" placeholder="e.g. Mark envelope Finance Dept.">${esc(pm.details||'')}</textarea></div>`;
+
+  /* ── OTHER / FALLBACK ── */
+  return `
+    <div class="fg"><label class="fl">Payment Method Name</label><input class="fi" id="pm-other-name-${i}" value="${esc(pm.otherName||pm.type||'')}" placeholder="e.g. Wire Transfer, Crypto, etc."></div>
+    <div class="fg"><label class="fl">Payment Details</label><textarea class="fi" id="pm-det-${i}" placeholder="Enter full payment instructions…">${esc(pm.details||'')}</textarea></div>`;
+}
+
 function pmTypeChange(i,type){document.getElementById('pm-badge-'+i).textContent=type;document.getElementById('pm-fields-'+i).innerHTML=pmFieldsHTML({type},i);}
 function wirePMSelects(){document.querySelectorAll('[id^="pm-type-"]').forEach(sel=>{sel.addEventListener('change',function(){pmTypeChange(this.id.replace('pm-type-',''),this.value);});});}
 function addPayMethod(){const list=document.getElementById('pm-list');const idx=list.querySelectorAll('.pmcard').length;const div=document.createElement('div');div.innerHTML=pmCardHTML({type:'Bank'},idx);list.appendChild(div.firstElementChild);setTimeout(wirePMSelects,50);}
 function removePM(i){document.getElementById('pm-'+i)?.remove();}
 function collectPMs(){return Array.from(document.querySelectorAll('#pm-list .pmcard')).map((_,i)=>{
   const g=id=>document.getElementById(id)?.value||'';
-  const type=g('pm-type-'+i)||'Bank';const pm={type};
-  if(type==='Bank'){pm.bankName=g('pm-bank-'+i);pm.branch=g('pm-branch-'+i);pm.accName=g('pm-accnm-'+i);pm.accNum=g('pm-accn-'+i);pm.swift=g('pm-swift-'+i);}
-  else if(type==='M-Pesa Paybill'){pm.paybillBusiness=g('pm-pb-'+i);pm.paybillAccount=g('pm-pba-'+i);pm.mpesaName=g('pm-mpnm-'+i);}
-  else if(type==='M-Pesa Till'){pm.tillNumber=g('pm-till-'+i);pm.mpesaName=g('pm-mpnm-'+i);}
-  else if(type==='M-Pesa Send Money'){pm.sendMoneyPhone=g('pm-smphone-'+i);pm.sendMoneyName=g('pm-smnm-'+i);pm.sendMoneyRef=g('pm-smref-'+i);}
-  else if(type==='Pochi la Biashara'){pm.pochiPhone=g('pm-pochphone-'+i);pm.pochiName=g('pm-pochnm-'+i);pm.pochiRef=g('pm-pochref-'+i);}
-  else{pm.details=g('pm-det-'+i);}
+  const type=g('pm-type-'+i)||'Bank'; const pm={type};
+  if(type==='Bank'){
+    pm.bankName=g('pm-bank-'+i); pm.branch=g('pm-branch-'+i);
+    pm.accName=g('pm-accnm-'+i); pm.accNum=g('pm-accn-'+i);
+    pm.swift=g('pm-swift-'+i);   pm.bankRef=g('pm-bankref-'+i);
+  } else if(type==='M-Pesa Paybill'){
+    pm.paybillBusiness=g('pm-pb-'+i); pm.paybillAccount=g('pm-pba-'+i); pm.mpesaName=g('pm-mpnm-'+i);
+  } else if(type==='M-Pesa Till'){
+    pm.tillNumber=g('pm-till-'+i); pm.mpesaName=g('pm-mpnm-'+i); pm.tillRef=g('pm-tillref-'+i);
+  } else if(type==='M-Pesa Send Money'){
+    pm.sendMoneyPhone=g('pm-smphone-'+i); pm.sendMoneyName=g('pm-smnm-'+i); pm.sendMoneyRef=g('pm-smref-'+i);
+  } else if(type==='Pochi la Biashara'){
+    pm.pochiPhone=g('pm-pochphone-'+i); pm.pochiName=g('pm-pochnm-'+i); pm.pochiRef=g('pm-pochref-'+i);
+  } else if(type==='Cash'){
+    pm.cashLocation=g('pm-cash-loc-'+i); pm.cashContact=g('pm-cash-contact-'+i); pm.details=g('pm-det-'+i);
+  } else if(type==='Cheque'){
+    pm.chequePayable=g('pm-chq-payable-'+i); pm.chequeAddress=g('pm-chq-addr-'+i); pm.details=g('pm-det-'+i);
+  } else {
+    pm.otherName=g('pm-other-name-'+i); pm.details=g('pm-det-'+i);
+  }
   return pm;});}
 function previewLogo(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{document.getElementById('co-img').value=e.target.result;document.getElementById('logo-prev').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;};r.readAsDataURL(file);}
 function updLogoColor(val){document.getElementById('logo-prev').style.background=val;document.getElementById('co-col-show').style.background=val;}
