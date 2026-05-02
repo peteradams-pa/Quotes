@@ -202,6 +202,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
       <button class="btn bp btn-sm" onclick="openQE(null)"><span class="material-icons-round">add</span> New Quote</button>
     </div>
     <div class="met" id="d-met"></div>
+    <div id="d-quick-actions"></div>
     <div id="d-onboarding"></div>
     <div id="d-alerts" style="padding:0 16px;display:flex;flex-direction:column;gap:8px"></div>
     <div id="d-chart-sec">
@@ -225,6 +226,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
       <div style="font-size:18px;font-weight:800">Quotes</div>
       <div style="display:flex;gap:6px">
         <button class="btn bo btn-sm" onclick="toggleBulkMode()" id="btn-bulk"><span class="material-icons-round">checklist</span></button>
+        <button class="btn bo btn-sm" onclick="openEstimator()" title="Quick Estimator"><span class="material-icons-round">calculate</span></button>
         <button class="btn bo btn-sm" onclick="openTemplates()"><span class="material-icons-round">bookmark</span></button>
         <button class="btn bp btn-sm" onclick="openQE(null)"><span class="material-icons-round">add</span> New</button>
       </div>
@@ -348,7 +350,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
 <div class="bd ful" id="dlg-sp"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-sp')"><span class="material-icons-round">close</span></button><span class="dt">Sales Team</span><button class="btn bp btn-sm" onclick="openSpEd(null)"><span class="material-icons-round">add</span> Add</button></div><div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px" id="sp-list"></div></div></div>
 <div class="bd" id="dlg-spe"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-spe')"><span class="material-icons-round">close</span></button><span class="dt" id="spe-ttl">Salesperson</span><button class="btn bp btn-sm" onclick="saveSp()">Save</button></div><div class="db" id="spe-body"></div></div></div>
 <div class="bd" id="dlg-acc"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-acc')"><span class="material-icons-round">close</span></button><span class="dt">Accent Color</span></div><div class="db" id="acc-body"></div></div></div>
-<div class="bd ful" id="dlg-prev"><div class="sh fh" style="display:flex;flex-direction:column"><div class="dh"><button class="ib" onclick="closeDlg('dlg-prev')"><span class="material-icons-round">close</span></button><span class="dt">Preview</span><div style="display:flex;gap:6px"><button class="btn bo btn-sm" onclick="printQuote()"><span class="material-icons-round">print</span></button><button class="btn bp btn-sm" onclick="doPDF()"><span class="material-icons-round">download</span> PDF</button></div></div><div style="flex:1;overflow-y:auto"><div class="prev-outer" id="prev-outer"></div></div></div></div>
+<div class="bd ful" id="dlg-prev"><div class="sh fh" style="display:flex;flex-direction:column"><div class="dh"><button class="ib" onclick="closeDlg('dlg-prev')"><span class="material-icons-round">close</span></button><span class="dt">Preview <span id="prev-page-count" style="font-size:12px;font-weight:400;color:var(--t2)"></span></span><div style="display:flex;gap:6px"><button class="ib" onclick="togglePDFDarkMode()" title="Toggle dark PDF"><span class="material-icons-round">dark_mode</span></button><button class="btn bo btn-sm" onclick="printQuote()"><span class="material-icons-round">print</span></button><button class="btn bp btn-sm" onclick="doPDF()"><span class="material-icons-round">download</span> PDF</button></div></div><div style="flex:1;overflow-y:auto"><div class="prev-outer" id="prev-outer"></div></div></div></div>
 <div class="bd ful" id="dlg-rev"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-rev')"><span class="material-icons-round">close</span></button><span class="dt">History</span></div><div id="rev-body"></div></div></div>
 <div class="bd ful" id="dlg-tpl"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-tpl')"><span class="material-icons-round">close</span></button><span class="dt">Templates</span></div><div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px" id="tpl-body"></div></div></div>
 <div class="bd ful" id="dlg-analytics"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-analytics')"><span class="material-icons-round">close</span></button><span class="dt">Sales Analytics</span></div><div id="analytics-body" style="padding-bottom:24px"></div></div></div>
