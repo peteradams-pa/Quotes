@@ -3400,3 +3400,885 @@ window.init = async function() {
   }
 };
 
+// ═══════════════════════════════════════════════════════
+// FORMS REWRITE PATCH — complete replacement
+// Fixes: customers, products, salespeople, quotes, company
+// Adds: custom colour picker for logo
+// ═══════════════════════════════════════════════════════
+
+// ── UTILITY: field value readers ──────────────────────
+function fv(id, fallback='') {
+  const el = document.getElementById(id);
+  if (!el) return fallback;
+  if (el.type === 'checkbox') return el.checked;
+  return el.value ?? fallback;
+}
+function setFV(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.type === 'checkbox') el.checked = !!val;
+  else el.value = val ?? '';
+}
+function togOn(id) {
+  return !!document.getElementById(id)?.classList.contains('on');
+}
+function showErr(msg, focusId) {
+  snack(msg);
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el) { el.focus(); el.classList.add('fi-err'); setTimeout(() => el.classList.remove('fi-err'), 2000); }
+  }
+  hap(40);
+}
+
+// ── CUSTOM COLOUR PICKER ───────────────────────────────
+// Replaces the native <input type="color"> with a branded swatch grid + hex input
+const COLOR_PALETTE = [
+  // Row 1 — Blues
+  '#1A73E8','#1565C0','#0D47A1','#1976D2','#42A5F5','#90CAF9',
+  // Row 2 — Greens
+  '#2E7D32','#388E3C','#43A047','#66BB6A','#00897B','#26A69A',
+  // Row 3 — Reds/Oranges
+  '#C62828','#E53935','#E65100','#F57C00','#FB8C00','#FFA726',
+  // Row 4 — Purples/Pinks
+  '#6A1B9A','#8E24AA','#C2185B','#D81B60','#AD1457','#E91E63',
+  // Row 5 — Dark tones
+  '#212121','#37474F','#455A64','#546E7A','#78909C','#90A4AE',
+  // Row 6 — Warm neutrals
+  '#BF360C','#4E342E','#3E2723','#FFF8E1','#F3E5F5','#FAFAFA',
+];
+
+function openColorPicker(currentColor, onSelect) {
+  // Store callback
+  window._colorPickerCb = onSelect;
+  window._colorPickerCurrent = currentColor || '#1A73E8';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'color-picker-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;animation:bfi .18s';
+  overlay.innerHTML = `
+    <div id="color-picker-panel" style="background:var(--su);width:100%;max-width:420px;border-radius:16px 16px 0 0;padding:0 0 env(safe-area-inset-bottom,0px);animation:shup .25s cubic-bezier(.2,0,0,1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--ol2)">
+        <span style="font-size:16px;font-weight:700">Choose Colour</span>
+        <button class="ib" onclick="closeColorPicker()"><span class="material-icons-round">close</span></button>
+      </div>
+      <div style="padding:14px 16px">
+        <!-- Preview -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div id="cp-preview" style="width:52px;height:52px;border-radius:10px;background:${currentColor||'#1A73E8'};flex-shrink:0;border:2px solid var(--ol)"></div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--t2);margin-bottom:4px;font-weight:600">HEX CODE</div>
+            <input id="cp-hex" class="fi" value="${currentColor||'#1A73E8'}"
+              placeholder="#000000" maxlength="7"
+              oninput="cpHexInput(this.value)"
+              style="font-family:monospace;font-size:15px;letter-spacing:1px">
+          </div>
+          <button class="btn bp btn-sm" onclick="cpConfirm()">Select</button>
+        </div>
+        <!-- Swatch grid -->
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:8px">
+          ${COLOR_PALETTE.map(c => `
+            <div onclick="cpSelectSwatch('${c}')"
+              style="aspect-ratio:1;border-radius:8px;background:${c};cursor:pointer;
+                border:3px solid ${c===currentColor?'var(--t1)':'transparent'};
+                transition:transform .1s,border-color .1s;position:relative"
+              id="cp-swatch-${c.replace('#','')}"
+              title="${c}">
+              ${c===currentColor?'<span class="material-icons-round" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;text-shadow:0 1px 3px rgba(0,0,0,.5)">check</span>':''}
+            </div>`).join('')}
+        </div>
+        <!-- RGB sliders -->
+        <div style="margin-top:10px;border-top:1px solid var(--ol2);padding-top:12px">
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">CUSTOM RGB</div>
+          ${['R','G','B'].map((ch,i) => {
+            const rgb = hexToRGB(currentColor||'#1A73E8');
+            const val = rgb ? [rgb.r,rgb.g,rgb.b][i] : 0;
+            const clr = ['#E53935','#43A047','#1976D2'][i];
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:700;color:${clr};width:12px">${ch}</span>
+              <input type="range" id="cp-${ch.toLowerCase()}" min="0" max="255" value="${val}"
+                style="flex:1;accent-color:${clr}" oninput="cpRGBInput()">
+              <span id="cp-${ch.toLowerCase()}-val" style="font-size:11px;width:26px;text-align:right;color:var(--t2)">${val}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeColorPicker(); });
+  document.body.appendChild(overlay);
+}
+
+function hexToRGB(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : null;
+}
+function rgbToHex(r,g,b) {
+  return '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+
+function cpHexInput(val) {
+  const hex = val.startsWith('#') ? val : '#'+val;
+  if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+    cpApplyColor(hex);
+  }
+  // Keep hex field showing what user typed
+}
+function cpSelectSwatch(color) {
+  document.querySelectorAll('[id^="cp-swatch-"]').forEach(el => {
+    el.style.borderColor = 'transparent';
+    el.innerHTML = '';
+  });
+  const sw = document.getElementById('cp-swatch-' + color.replace('#',''));
+  if (sw) {
+    sw.style.borderColor = 'var(--t1)';
+    sw.innerHTML = '<span class="material-icons-round" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;text-shadow:0 1px 3px rgba(0,0,0,.5)">check</span>';
+  }
+  cpApplyColor(color);
+}
+function cpRGBInput() {
+  const r = parseInt(document.getElementById('cp-r')?.value)||0;
+  const g = parseInt(document.getElementById('cp-g')?.value)||0;
+  const b = parseInt(document.getElementById('cp-b')?.value)||0;
+  document.getElementById('cp-r-val').textContent = r;
+  document.getElementById('cp-g-val').textContent = g;
+  document.getElementById('cp-b-val').textContent = b;
+  const hex = rgbToHex(r,g,b);
+  cpApplyColor(hex, false);
+}
+function cpApplyColor(hex, updateSliders=true) {
+  const prev = document.getElementById('cp-preview');
+  const hexInput = document.getElementById('cp-hex');
+  if (prev) prev.style.background = hex;
+  if (hexInput && document.activeElement !== hexInput) hexInput.value = hex;
+  window._colorPickerCurrent = hex;
+  if (updateSliders) {
+    const rgb = hexToRGB(hex);
+    if (rgb) {
+      ['r','g','b'].forEach(c => {
+        const sl = document.getElementById('cp-'+c);
+        const vl = document.getElementById('cp-'+c+'-val');
+        if (sl) sl.value = rgb[c];
+        if (vl) vl.textContent = rgb[c];
+      });
+    }
+  }
+}
+function cpConfirm() {
+  const color = window._colorPickerCurrent || '#1A73E8';
+  closeColorPicker();
+  if (window._colorPickerCb) window._colorPickerCb(color);
+}
+function closeColorPicker() {
+  const el = document.getElementById('color-picker-overlay');
+  if (el) el.remove();
+}
+
+// ── PRODUCT EDITOR — full rewrite ───────────────────────
+function openInvEd(id) {
+  editInvId = id;
+  const p = id ? getProd(id) : null;
+  const nid = nextId('ITM', DB.inventory);
+  const cats = getCategories();
+  const salePrice = p ? (p.unitCost * (1 + p.markup)) : 0;
+
+  document.getElementById('inv-ttl').textContent = id ? 'Edit Product' : 'New Product';
+  document.getElementById('inv-body').innerHTML = `
+    <div class="fg">
+      <label class="fl">Item ID <span style="color:var(--t3);font-weight:400">${id ? '(read-only)' : '(auto-generated)'}</span></label>
+      <input class="fi" id="ii-id" value="${esc(p?.id || nid)}" ${id ? 'readonly' : ''}>
+    </div>
+    <div class="fg">
+      <label class="fl">Product / Service Name <span style="color:var(--E)">*</span></label>
+      <input class="fi" id="ii-nm" value="${esc(p?.name || '')}" placeholder="e.g. Enterprise Software License">
+    </div>
+    <div class="fg">
+      <label class="fl">Description</label>
+      <textarea class="fi" id="ii-desc" placeholder="Brief description shown in quotes and PDF">${esc(p?.description || '')}</textarea>
+    </div>
+    <div class="fg">
+      <label class="fl">Category</label>
+      ${buildCustomSelect({ id: 'ii-cat', label: 'Category', options: cats.map(c => ({ value: c, label: c })), value: p?.category || cats[0] })}
+    </div>
+    <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Pricing</div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Unit Cost <span style="color:var(--E)">*</span></label>
+        <input class="fi" type="number" id="ii-cost" value="${p?.unitCost ?? 0}" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()">
+      </div>
+      <div class="fg">
+        <label class="fl">Markup %</label>
+        <input class="fi" type="number" id="ii-mkup" value="${Math.round((p?.markup ?? 0.30) * 100)}" min="0" placeholder="30" oninput="updateSalePreview()">
+      </div>
+    </div>
+    <div id="sale-preview" style="background:var(--su2);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:var(--t2)">Sale Price</span>
+      <span id="sale-preview-val" style="font-size:16px;font-weight:800;color:var(--P)">${fmt(salePrice)}</span>
+    </div>
+    <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Inventory</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:12px 14px;background:var(--su2);border-radius:8px">
+      <div>
+        <div style="font-size:14px;font-weight:600">Track Stock Level</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:2px">Show stock count and warn when running low</div>
+      </div>
+      <button class="tog ${p?.trackStock ? 'on' : ''}" id="ii-track"
+        onclick="this.classList.toggle('on');document.getElementById('ii-stock-row').style.display=this.classList.contains('on')?'block':'none'"></button>
+    </div>
+    <div id="ii-stock-row" style="display:${p?.trackStock ? 'block' : 'none'}">
+      <div class="fg">
+        <label class="fl">Current Stock Quantity</label>
+        <input class="fi" type="number" id="ii-stock" value="${p?.stock ?? 0}" min="0" step="1" placeholder="0">
+      </div>
+    </div>
+    ${id ? `
+      <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+      <button class="btn bd2 btn-w" onclick="confirmAct('Delete this product? It will be removed from the catalogue.',()=>softDelItem('inv','${id}'))">
+        <span class="material-icons-round">delete</span> Delete Product
+      </button>` : ''}
+    <div style="height:8px"></div>`;
+
+  openDlg('dlg-inv');
+  pushNav('inv-ed-' + (id || 'new'));
+}
+
+function updateSalePreview() {
+  const cost = parseFloat(fv('ii-cost')) || 0;
+  const mkup = (parseFloat(fv('ii-mkup')) || 0) / 100;
+  const price = cost * (1 + mkup);
+  const el = document.getElementById('sale-preview-val');
+  if (el) el.textContent = fmt(price);
+}
+
+function saveInv() {
+  const id = fv('ii-id').trim();
+  const nm = fv('ii-nm').trim();
+  if (!id)   { showErr('Item ID is required', 'ii-id'); return; }
+  if (!nm)   { showErr('Product name is required', 'ii-nm'); return; }
+  if (!editInvId && DB.inventory.find(i => i.id === id)) {
+    showErr('A product with this ID already exists — change the ID', 'ii-id'); return;
+  }
+  const cost = parseFloat(fv('ii-cost'));
+  if (isNaN(cost) || cost < 0) { showErr('Unit cost must be 0 or more', 'ii-cost'); return; }
+  const mkup = parseFloat(fv('ii-mkup'));
+  if (isNaN(mkup) || mkup < 0) { showErr('Markup must be 0 or more', 'ii-mkup'); return; }
+  const trackStock = togOn('ii-track');
+  const stockVal = trackStock ? (parseInt(fv('ii-stock')) || 0) : null;
+  const photoData = document.getElementById('prod-photo-data')?.value || getProd(id)?.photo || '';
+  const item = {
+    id, name: nm,
+    description: fv('ii-desc'),
+    category: fv('ii-cat') || getCategories()[0],
+    unitCost: cost,
+    markup: mkup / 100,
+    trackStock,
+    stock: stockVal,
+    photo: photoData,
+    companyId: (activeCo() || {}).id
+  };
+  const idx = DB.inventory.findIndex(i => i.id === id);
+  if (idx >= 0) DB.inventory[idx] = item; else DB.inventory.push(item);
+  save();
+  closeDlg('dlg-inv');
+  renderInv();
+  snack('✓ Product saved');
+  hap(20);
+}
+
+// ── CUSTOMER EDITOR — full rewrite ───────────────────────
+function openCustEd(id, fromQE = false) {
+  editCustId = id;
+  const c = id ? getCust(id) : null;
+  const nid = nextId('CUS', DB.customers);
+  const tiers = ['Platinum', 'Gold', 'Silver', 'Bronze'];
+
+  document.getElementById('cust-ttl').textContent = id ? 'Edit Customer' : 'New Customer';
+  document.getElementById('cust-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="av" style="width:52px;height:52px;font-size:22px;background:${avColor(c?.company || '?')};flex-shrink:0">${avLetter(c?.company || '?')}</div>
+      <div>
+        <div style="font-size:16px;font-weight:800">${esc(c?.company || 'New Customer')}</div>
+        <div style="font-size:12px;color:var(--t2)">${id ? 'ID: '+id : 'Fill in details below'}</div>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Customer ID <span style="color:var(--t3);font-weight:400">${id ? '(read-only)' : '(auto-generated)'}</span></label>
+      <input class="fi" id="ci-id" value="${esc(c?.id || nid)}" ${id ? 'readonly' : ''}>
+    </div>
+    <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Company</div>
+    <div class="fg">
+      <label class="fl">Company Name <span style="color:var(--E)">*</span></label>
+      <input class="fi" id="ci-co" value="${esc(c?.company || '')}" placeholder="e.g. Nexus Technologies Ltd">
+    </div>
+    <div class="fg">
+      <label class="fl">Contact Person</label>
+      <input class="fi" id="ci-cnt" value="${esc(c?.contact || '')}" placeholder="Full name">
+    </div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Email</label>
+        <input class="fi" type="email" id="ci-em" value="${esc(c?.email || '')}" placeholder="email@company.com">
+      </div>
+      <div class="fg">
+        <label class="fl">Phone</label>
+        <input class="fi" type="tel" id="ci-ph" value="${esc(c?.phone || '')}" placeholder="+254 7xx xxx xxx">
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Physical Address</label>
+      <textarea class="fi" id="ci-addr" placeholder="Street, Area, City">${esc(c?.address || '')}</textarea>
+    </div>
+    <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Classification</div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Industry</label>
+        <input class="fi" id="ci-ind" value="${esc(c?.industry || '')}" placeholder="e.g. Technology">
+      </div>
+      <div class="fg">
+        <label class="fl">Tier</label>
+        ${buildCustomSelect({ id: 'ci-tier', label: 'Tier', options: tiers.map(t => ({ value: t, label: t })), value: c?.tier || 'Bronze' })}
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">KRA PIN</label>
+      <input class="fi" id="ci-pin" value="${esc(c?.taxPin || '')}" placeholder="P051234567A">
+    </div>
+    ${c?.ltv ? `
+      <div style="background:linear-gradient(135deg,var(--PC),var(--su2));border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid var(--ol2)">
+        <div style="font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Lifetime Value (Won Quotes)</div>
+        <div style="font-size:22px;font-weight:900;color:var(--P);margin-top:3px">${fmt(c.ltv)}</div>
+      </div>` : ''}
+    ${id ? `
+      <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+      <button class="btn btn-ton btn-w" style="margin-bottom:8px" onclick="openCustomerStatement('${id}')">
+        <span class="material-icons-round">summarize</span> View Account Statement
+      </button>
+      <button class="btn bd2 btn-w" onclick="confirmAct('Delete this customer? Their quotes will still exist.',()=>softDelItem('cust','${id}'))">
+        <span class="material-icons-round">delete</span> Delete Customer
+      </button>` : ''}
+    <div style="height:8px"></div>`;
+
+  openDlg('dlg-cust');
+  pushNav('cust-ed-' + (id || 'new'));
+}
+
+function saveCust() {
+  const id  = fv('ci-id').trim();
+  const co  = fv('ci-co').trim();
+  const em  = fv('ci-em').trim();
+  const ph  = fv('ci-ph').trim();
+  if (!id)  { showErr('Customer ID is required', 'ci-id'); return; }
+  if (!co)  { showErr('Company name is required', 'ci-co'); return; }
+  if (!editCustId && DB.customers.find(c => c.id === id)) {
+    showErr('A customer with this ID already exists', 'ci-id'); return;
+  }
+  if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    showErr('Enter a valid email address', 'ci-em'); return;
+  }
+  const cust = {
+    id, company: co,
+    contact:  fv('ci-cnt'),
+    email:    em,
+    phone:    ph,
+    address:  fv('ci-addr'),
+    industry: fv('ci-ind'),
+    tier:     fv('ci-tier') || 'Bronze',
+    taxPin:   fv('ci-pin'),
+    companyId: (activeCo() || {}).id,
+    ltv:      getCust(id)?.ltv || 0
+  };
+  const idx = DB.customers.findIndex(c => c.id === id);
+  if (idx >= 0) DB.customers[idx] = cust; else DB.customers.push(cust);
+  save();
+  closeDlg('dlg-cust');
+  renderCusts();
+  // If opened from QE, refresh customer list
+  const custEl = document.getElementById('qe-cust');
+  if (custEl) {
+    // Rebuild the select
+    const custs = acoCusts();
+    _csOptsMap['qe-cust'] = { label: 'Customer', options: [{ value: '', label: '— Select a customer —' }, ...custs.map(c => ({ value: c.id, label: c.company, sub: c.contact + ' · ' + (c.phone || '') }))], searchable: true };
+    // Auto-select the new customer
+    csSelect('qe-cust', id, co);
+    previewCust();
+  }
+  snack('✓ Customer saved');
+  hap(20);
+}
+
+// ── SALESPERSON EDITOR — full rewrite ────────────────────
+function openSpEd(id) {
+  editSpId = id;
+  const sp = id ? getSP(id) : null;
+  const nid = nextId('SP', DB.salespeople);
+
+  document.getElementById('spe-ttl').textContent = id ? 'Edit Salesperson' : 'New Salesperson';
+  document.getElementById('spe-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="av" style="width:52px;height:52px;font-size:22px;background:${avColor(sp?.name || '?')};flex-shrink:0">${avLetter(sp?.name || '?')}</div>
+      <div>
+        <div style="font-size:16px;font-weight:800">${esc(sp?.name || 'New Team Member')}</div>
+        <div style="font-size:12px;color:var(--t2)">${esc(sp?.title || 'Sales Team')}</div>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">ID <span style="color:var(--t3);font-weight:400">${id ? '(read-only)' : '(auto-generated)'}</span></label>
+      <input class="fi" id="sp-id" value="${esc(sp?.id || nid)}" ${id ? 'readonly' : ''}>
+    </div>
+    <div class="fg">
+      <label class="fl">Full Name <span style="color:var(--E)">*</span></label>
+      <input class="fi" id="sp-nm" value="${esc(sp?.name || '')}" placeholder="e.g. Sarah Kamau">
+    </div>
+    <div class="fg">
+      <label class="fl">Job Title</label>
+      <input class="fi" id="sp-ttl2" value="${esc(sp?.title || '')}" placeholder="e.g. Senior Sales Executive">
+    </div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Email</label>
+        <input class="fi" type="email" id="sp-em" value="${esc(sp?.email || '')}" placeholder="name@company.com">
+      </div>
+      <div class="fg">
+        <label class="fl">Phone</label>
+        <input class="fi" type="tel" id="sp-ph" value="${esc(sp?.phone || '')}" placeholder="+254 7xx xxx xxx">
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Company Profile</label>
+      ${buildCustomSelect({ id: 'sp-coid', label: 'Company', options: DB.companies.map(co => ({ value: co.id, label: co.name })), value: sp?.companyId || DB.settings.activeCompanyId || '' })}
+    </div>
+    <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Digital Signature</div>
+    <div style="background:var(--su2);border-radius:10px;padding:14px;border:1.5px dashed var(--ol)">
+      <div id="sp-sig-preview" style="min-height:70px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+        ${sp?.signatureImg
+          ? `<img src="${sp.signatureImg}" style="max-height:70px;max-width:240px;object-fit:contain;border-radius:4px">`
+          : `<div style="text-align:center;color:var(--t3)"><span class="material-icons-round" style="font-size:36px;display:block;margin-bottom:4px">draw</span><div style="font-size:12px">No signature uploaded</div></div>`}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn bo btn-sm" onclick="document.getElementById('sp-sig-file').click()">
+          <span class="material-icons-round">upload</span> Upload Image
+        </button>
+        <button class="btn btn-ton btn-sm" onclick="openSignaturePad('${id || ''}')">
+          <span class="material-icons-round">draw</span> Draw Signature
+        </button>
+        ${sp?.signatureImg ? `<button class="btn bt btn-sm" style="color:var(--E)" onclick="clearSpSig()">
+          <span class="material-icons-round">delete</span> Remove
+        </button>` : ''}
+      </div>
+      <input type="file" id="sp-sig-file" accept="image/*" style="display:none" onchange="previewSpSig(this)">
+      <input type="hidden" id="sp-sig-img" value="${sp?.signatureImg || ''}">
+      <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:10px">PNG with transparent background works best</div>
+    </div>
+    ${id ? `
+      <div style="height:1px;background:var(--ol2);margin:14px 0 10px"></div>
+      <button class="btn bd2 btn-w" onclick="confirmAct('Remove this salesperson from the team?',()=>softDelItem('sp','${id}'))">
+        <span class="material-icons-round">person_remove</span> Remove from Team
+      </button>` : ''}
+    <div style="height:8px"></div>`;
+
+  openDlg('dlg-spe');
+  pushNav('sp-ed-' + (id || 'new'));
+}
+
+function saveSp() {
+  const id   = fv('sp-id').trim();
+  const name = fv('sp-nm').trim();
+  const em   = fv('sp-em').trim();
+  if (!id)   { showErr('Salesperson ID is required', 'sp-id'); return; }
+  if (!name) { showErr('Full name is required', 'sp-nm'); return; }
+  if (!editSpId && DB.salespeople.find(s => s.id === id)) {
+    showErr('A salesperson with this ID already exists', 'sp-id'); return;
+  }
+  if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    showErr('Enter a valid email address', 'sp-em'); return;
+  }
+  const sigImg = document.getElementById('sp-sig-img')?.value || '';
+  const sp = {
+    id, name,
+    title:       fv('sp-ttl2'),
+    email:       em,
+    phone:       fv('sp-ph'),
+    companyId:   fv('sp-coid') || DB.settings.activeCompanyId || '',
+    signatureImg: sigImg
+  };
+  const idx = DB.salespeople.findIndex(s => s.id === id);
+  if (idx >= 0) DB.salespeople[idx] = sp; else DB.salespeople.push(sp);
+  save();
+  closeDlg('dlg-spe');
+  renderSPList();
+  renderSettings();
+  snack('✓ Salesperson saved');
+  hap(20);
+}
+
+// ── COMPANY EDITOR — full rewrite with custom colour picker ──
+function openCoEd(id) {
+  editCoId = id;
+  document.getElementById('co-ttl').textContent = id ? 'Edit Company Profile' : 'New Company Profile';
+  buildCoForm(id ? getCo(id) : null);
+  openDlg('dlg-co');
+  pushNav('co-ed-' + (id || 'new'));
+}
+
+function buildCoForm(co) {
+  const pms = co?.paymentMethods || [];
+  const logoColor = co?.logoColor || '#1A73E8';
+
+  document.getElementById('co-body').innerHTML = `
+    <!-- Logo Section -->
+    <div style="background:var(--su2);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Company Logo</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div id="logo-prev"
+          style="width:72px;height:72px;border-radius:12px;background:${logoColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;cursor:pointer;overflow:hidden;flex-shrink:0;border:2px solid var(--ol)"
+          onclick="document.getElementById('logo-file').click()">
+          ${co?.logoImg ? `<img src="${co.logoImg}" style="width:100%;height:100%;object-fit:cover">` : esc(co?.logoText || 'A')}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px">${esc(co?.name || 'Company Name')}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn bo btn-sm" onclick="document.getElementById('logo-file').click()">
+              <span class="material-icons-round">upload</span> Upload Logo
+            </button>
+            ${co?.logoImg ? `<button class="btn bt btn-sm" style="color:var(--E)" onclick="clearLogoImg()">
+              <span class="material-icons-round">delete</span> Remove
+            </button>` : ''}
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:6px">PNG/JPG, square image recommended</div>
+        </div>
+      </div>
+      <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(this)">
+      <input type="hidden" id="co-img" value="${co?.logoImg || ''}">
+      <input type="hidden" id="co-logo-color" value="${logoColor}">
+
+      <!-- Initials + Custom colour picker -->
+      <div class="fr">
+        <div class="fg">
+          <label class="fl">Initials (shown without logo)</label>
+          <input class="fi" id="co-lt" value="${esc(co?.logoText || 'A')}" maxlength="3"
+            oninput="updLogoText(this.value)" placeholder="A">
+        </div>
+        <div class="fg">
+          <label class="fl">Background Colour</label>
+          <div id="co-color-btn"
+            onclick="openColorPicker(document.getElementById('co-logo-color').value, applyLogoColor)"
+            style="height:43px;border-radius:8px;background:${logoColor};cursor:pointer;border:1.5px solid var(--ol);display:flex;align-items:center;justify-content:space-between;padding:0 12px;gap:8px">
+            <span id="co-color-hex" style="font-family:monospace;font-size:13px;color:#fff;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.4)">${logoColor}</span>
+            <span class="material-icons-round" style="color:#fff;font-size:18px;opacity:.8">colorize</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Company Info -->
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Company Information</div>
+    <div class="fg">
+      <label class="fl">Company Name <span style="color:var(--E)">*</span></label>
+      <input class="fi" id="co-nm" value="${esc(co?.name || '')}" placeholder="e.g. Acme Corporation Ltd.">
+    </div>
+    <div class="fg">
+      <label class="fl">Tagline / Slogan</label>
+      <input class="fi" id="co-tag" value="${esc(co?.tagline || '')}" placeholder="e.g. Enterprise Solutions">
+    </div>
+    <div class="fg">
+      <label class="fl">Physical Address</label>
+      <textarea class="fi" id="co-addr" placeholder="Street, Area, City, Country">${esc(co?.address || '')}</textarea>
+    </div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Phone</label>
+        <input class="fi" type="tel" id="co-ph" value="${esc(co?.phone || '')}" placeholder="+254 700 000 000">
+      </div>
+      <div class="fg">
+        <label class="fl">Email</label>
+        <input class="fi" type="email" id="co-em" value="${esc(co?.email || '')}" placeholder="info@company.com">
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Website</label>
+        <input class="fi" id="co-web" value="${esc(co?.website || '')}" placeholder="www.company.com">
+      </div>
+      <div class="fg">
+        <label class="fl">KRA PIN</label>
+        <input class="fi" id="co-pin" value="${esc(co?.taxPin || '')}" placeholder="P051234567A">
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--ol2);margin:4px 0 16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Payment Methods</div>
+      <button class="btn btn-ton btn-sm" onclick="addPayMethod()">
+        <span class="material-icons-round">add</span> Add Method
+      </button>
+    </div>
+    <div id="pm-list">${pms.map((pm, i) => pmCardHTML(pm, i)).join('')}</div>
+
+    <div style="height:1px;background:var(--ol2);margin:4px 0 16px"></div>
+    <div class="fg">
+      <label class="fl">Default Payment Terms</label>
+      ${buildCustomSelect({ id: 'co-pterms', label: 'Payment Terms', options: ['Net 7','Net 14','Net 30','Net 60','Due on Receipt','50% Upfront','COD'].map(t => ({ value: t, label: t })), value: co?.paymentTerms || 'Net 30' })}
+    </div>
+
+    <div style="height:1px;background:var(--ol2);margin:4px 0 16px"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Terms &amp; Conditions</div>
+    <div class="fg">
+      <textarea class="fi" id="co-tc" rows="6" placeholder="1. Payment is due within 30 days…">${esc(co?.terms || '')}</textarea>
+    </div>
+
+    ${editCoId ? `
+      <div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>
+      <button class="btn bd2 btn-w" onclick="confirmAct('Delete this company profile? Associated quotes will lose their company link.',()=>{softDelItem('co','${editCoId}');closeDlg('dlg-co')})">
+        <span class="material-icons-round">delete</span> Delete Profile
+      </button>` : ''}
+    <div style="height:20px"></div>`;
+
+  setTimeout(wirePMSelects, 50);
+}
+
+function applyLogoColor(color) {
+  // Update hidden field
+  const hid = document.getElementById('co-logo-color');
+  if (hid) hid.value = color;
+  // Update preview div
+  const prev = document.getElementById('logo-prev');
+  if (prev && !document.getElementById('co-img')?.value) prev.style.background = color;
+  // Update colour button
+  const btn = document.getElementById('co-color-btn');
+  if (btn) btn.style.background = color;
+  const hex = document.getElementById('co-color-hex');
+  if (hex) hex.textContent = color;
+}
+
+function clearLogoImg() {
+  document.getElementById('co-img').value = '';
+  const prev = document.getElementById('logo-prev');
+  const color = document.getElementById('co-logo-color')?.value || '#1A73E8';
+  const text = fv('co-lt') || 'A';
+  if (prev) { prev.style.background = color; prev.innerHTML = text; }
+}
+
+function saveCo() {
+  const name = fv('co-nm').trim();
+  if (!name) { showErr('Company name is required', 'co-nm'); return; }
+  const em = fv('co-em').trim();
+  if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    showErr('Enter a valid email address', 'co-em'); return;
+  }
+  const id = editCoId || 'CO-' + uid().slice(0, 6).toUpperCase();
+  const logoColor = document.getElementById('co-logo-color')?.value || '#1A73E8';
+  const co = {
+    id, name,
+    tagline:        fv('co-tag'),
+    address:        fv('co-addr'),
+    phone:          fv('co-ph'),
+    email:          em,
+    website:        fv('co-web'),
+    taxPin:         fv('co-pin'),
+    paymentMethods: collectPMs(),
+    paymentTerms:   fv('co-pterms') || 'Net 30',
+    terms:          fv('co-tc'),
+    logoText:       fv('co-lt') || (name[0] || 'A').toUpperCase(),
+    logoColor,
+    logoImg:        document.getElementById('co-img')?.value || null
+  };
+  const idx = DB.companies.findIndex(c => c.id === id);
+  if (idx >= 0) DB.companies[idx] = co;
+  else { DB.companies.push(co); if (!DB.settings.activeCompanyId) DB.settings.activeCompanyId = id; }
+  save();
+  closeDlg('dlg-co');
+  renderSettings();
+  renderDash();
+  snack('✓ Company profile saved');
+  hap(20);
+}
+
+// Keep existing helpers working
+function previewLogo(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('co-img').value = e.target.result;
+    const prev = document.getElementById('logo-prev');
+    if (prev) prev.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  r.readAsDataURL(file);
+}
+function updLogoColor(val) {
+  applyLogoColor(val);
+}
+function updLogoText(t) {
+  if (!document.getElementById('co-img')?.value) {
+    const prev = document.getElementById('logo-prev');
+    if (prev) prev.textContent = t || 'A';
+  }
+}
+
+// ── QUOTE EDITOR STEP 0 — rewrite ───────────────────────
+function renderQE0(body) {
+  const sps = acoSP(), cos = DB.companies;
+  const currencies = Object.keys(DB.settings.exchangeRates || { KSh: 1, USD: 0.0077, EUR: 0.0071 });
+  body.innerHTML = `
+    <!-- Quote ID row -->
+    <div class="fg">
+      <label class="fl">Quote ID</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="fi" id="qe-id" value="${esc(qeD.id)}" readonly style="flex:1;font-family:monospace;font-weight:700">
+        <div style="padding:6px 10px;background:var(--PC);border-radius:8px;font-size:11px;font-weight:700;color:var(--P);white-space:nowrap">${qeD.isInvoice ? 'INVOICE' : 'QUOTE'}</div>
+      </div>
+    </div>
+    <!-- Dates -->
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Quote Date <span style="color:var(--E)">*</span></label>
+        <input class="fi" type="date" id="qe-date" value="${qeD.date}">
+      </div>
+      <div class="fg">
+        <label class="fl">Valid Until <span style="color:var(--E)">*</span></label>
+        <input class="fi" type="date" id="qe-valid" value="${qeD.validUntil}">
+      </div>
+    </div>
+    <!-- Status + Version -->
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Status</label>
+        ${buildCustomSelect({ id: 'qe-status', label: 'Status', options: ['Draft','Sent','Won','Lost','Expired','Pending Approval'].map(s => ({ value: s, label: s })), value: qeD.status })}
+      </div>
+      <div class="fg">
+        <label class="fl">Version</label>
+        <input class="fi" id="qe-ver" value="${esc(qeD.version || 'v1')}" placeholder="v1">
+      </div>
+    </div>
+    <!-- Salesperson -->
+    <div class="fg">
+      <label class="fl">Salesperson</label>
+      ${sps.length === 0
+        ? `<div style="background:var(--su2);border-radius:8px;padding:10px 13px;font-size:13px;color:var(--t2);display:flex;align-items:center;gap:8px"><span class="material-icons-round" style="font-size:16px">info</span>No salespeople added yet — <button class="btn bt btn-sm" onclick="openSalesTeam()" style="padding:0 6px">Add one</button></div>`
+        : buildCustomSelect({ id: 'qe-sp', label: 'Salesperson', placeholder: '— None —', options: [{ value: '', label: '— None —' }, ...sps.map(s => ({ value: s.id, label: s.name, sub: s.title || '' }))], value: qeD.salespersonId || '', searchable: sps.length > 4 })}
+    </div>
+    <!-- Company -->
+    <div class="fg">
+      <label class="fl">Company Profile</label>
+      ${cos.length === 0
+        ? `<div style="background:var(--su2);border-radius:8px;padding:10px 13px;font-size:13px;color:var(--t2);display:flex;align-items:center;gap:8px"><span class="material-icons-round" style="font-size:16px">info</span>No company yet — <button class="btn bt btn-sm" onclick="openCoEd(null)" style="padding:0 6px">Add one</button></div>`
+        : buildCustomSelect({ id: 'qe-co', label: 'Company', options: cos.map(c => ({ value: c.id, label: c.name })), value: qeD.companyId })}
+    </div>
+    <!-- Discount + Currency -->
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">Overall Discount %</label>
+        <input class="fi" type="number" id="qe-disc" value="${Math.round((qeD.discount || 0) * 100)}" min="0" max="100" placeholder="0">
+      </div>
+      <div class="fg">
+        <label class="fl">Currency</label>
+        ${buildCustomSelect({ id: 'qe-curr', label: 'Currency', options: currencies.map(c => ({ value: c, label: c })), value: qeD.currency || sym() })}
+      </div>
+    </div>
+    <!-- Taxable toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--su2);border-radius:8px;margin-bottom:13px">
+      <div>
+        <div style="font-size:14px;font-weight:600">Apply ${DB.settings.taxLabel || 'VAT'} (${Math.round((DB.settings.taxRate || 0.16) * 100)}%)</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:1px">Toggle off for tax-exempt quotes</div>
+      </div>
+      <button class="tog ${qeD.taxable ? 'on' : ''}" id="qe-tax" onclick="this.classList.toggle('on')"></button>
+    </div>
+    <!-- Revision note -->
+    <div class="fg">
+      <label class="fl">Revision Note</label>
+      <input class="fi" id="qe-rev" value="${esc(qeD.revision || '')}" placeholder="e.g. Initial proposal / Revised scope after meeting">
+    </div>`;
+}
+
+// ── QUOTE EDITOR — collectQE rewrite ────────────────────
+function collectQE(step) {
+  if (step === 0) {
+    qeD.date         = fv('qe-date')  || qeD.date;
+    qeD.validUntil   = fv('qe-valid') || qeD.validUntil;
+    qeD.status       = fv('qe-status')|| qeD.status;
+    qeD.salespersonId= fv('qe-sp');
+    qeD.companyId    = fv('qe-co')    || qeD.companyId;
+    qeD.version      = fv('qe-ver')   || qeD.version;
+    qeD.discount     = (parseFloat(fv('qe-disc')) || 0) / 100;
+    qeD.taxable      = togOn('qe-tax');
+    qeD.revision     = fv('qe-rev');
+    qeD.currency     = fv('qe-curr')  || sym();
+    // Custom fields
+    const fields = DB.settings.customQuoteFields || [];
+    if (fields.length) {
+      if (!qeD.customFields) qeD.customFields = {};
+      fields.forEach(f => {
+        const el = document.getElementById('cqf-val-' + f.replace(/\s/g, '_'));
+        if (el) qeD.customFields[f] = el.value;
+      });
+    }
+  }
+  if (step === 1) {
+    qeD.customerId = fv('qe-cust') || qeD.customerId;
+  }
+  if (step === 3) {
+    qeD.notes = fv('qe-notes');
+  }
+}
+
+// ── QUOTE SAVE — rewrite ────────────────────────────────
+function qeSave() {
+  collectQE(qeStep);
+  // Validate date
+  if (!qeD.date)      { showErr('Quote date is required'); qeStep=0; renderQEStep(); return; }
+  if (!qeD.validUntil){ showErr('Valid until date is required'); qeStep=0; renderQEStep(); return; }
+  if (qeD.validUntil < qeD.date) { showErr('Valid until must be after the quote date'); qeStep=0; renderQEStep(); return; }
+  if (!qeD.customerId){ showErr('Please select a customer', 'qe-cust'); qeStep=1; renderQEStep(); return; }
+  if (!qeD.items || !qeD.items.length) { showErr('Add at least one line item'); qeStep=2; renderQEStep(); return; }
+  const emptyItems = qeD.items.filter(li => !li.desc && !li.itemId);
+  if (emptyItems.length) { showErr('Some items have no description — fill them in or remove them'); qeStep=2; renderQEStep(); return; }
+  const zeroItems = qeD.items.filter(li => !(li.unitPrice > 0));
+  if (zeroItems.length) {
+    confirmAct(`${zeroItems.length} item(s) have a zero price. Save anyway?`, _doQESave);
+    return;
+  }
+  _doQESave();
+}
+
+function _doQESave() {
+  const maxD = (DB.settings.maxDiscountPct || 100) / 100;
+  const lineOver  = (qeD.items || []).some(li => (li.discount || 0) > maxD);
+  const totalOver = (qeD.discount || 0) > maxD;
+  if (lineOver || totalOver) {
+    qeD.status = 'Pending Approval';
+    logActivity(qeD, 'Auto-submitted for approval: discount exceeds limit');
+    snack('Discount exceeds limit — submitted for manager approval');
+  }
+  const isNew = !DB.quotes.find(q => q.id === qeD.id);
+  if (!isNew) logActivity(qeD, 'Quote edited');
+  const idx = DB.quotes.findIndex(q => q.id === qeD.id);
+  if (idx >= 0) DB.quotes[idx] = qeD; else DB.quotes.unshift(qeD);
+  if (qeD.status === 'Won') updateLTV(qeD.customerId);
+  // Deduct stock (new quotes only)
+  if (isNew) {
+    (qeD.items || []).forEach(li => {
+      const p = getProd(li.itemId);
+      if (p && p.trackStock && p.stock != null) p.stock = Math.max(0, p.stock - (li.qty || 1));
+    });
+  }
+  save();
+  closeDlg('dlg-qe');
+  renderPage(curPage);
+  snack(qeD.id + ' saved ✓');
+  hap(20);
+  updateNavBadges();
+  setTimeout(() => openQD(qeD.id), 360);
+}
+
+// ── ADD fi-err STYLE DYNAMICALLY ────────────────────────
+(function addErrStyle() {
+  const s = document.createElement('style');
+  s.textContent = `
+    .fi-err { border-color: var(--E) !important; box-shadow: 0 0 0 3px rgba(234,67,53,.15) !important; animation: shake .3s ease; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+  `;
+  document.head.appendChild(s);
+})();
