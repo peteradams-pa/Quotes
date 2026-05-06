@@ -4282,3 +4282,482 @@ function _doQESave() {
   `;
   document.head.appendChild(s);
 })();
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION SYSTEM — complete rewrite
+// Fixes: dialogs not closing on page change, colour picker
+//        and signature pad leaking across pages, back button
+//        not cleaning up overlay elements, cs-sheet state
+// ═══════════════════════════════════════════════════════
+
+// ── DIALOG ID LIST ───────────────────────────────────────
+const ALL_DLGS = [
+  'dlg-qe','dlg-qd','dlg-qact','dlg-co','dlg-inv','dlg-cust',
+  'dlg-set','dlg-sp','dlg-spe','dlg-acc','dlg-prev','dlg-rev',
+  'dlg-tpl','dlg-analytics','dlg-cfm','dlg-more','dlg-share'
+];
+
+// ── CLOSE EVERY OPEN DIALOG + ALL OVERLAYS ───────────────
+function closeAllDlgs(exceptId) {
+  ALL_DLGS.forEach(id => {
+    if (id === exceptId) return;
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  });
+  // Close custom select
+  const cs = document.getElementById('cs-sheet');
+  if (cs) cs.classList.remove('open');
+  if (_csId) {
+    document.getElementById('csarr-' + _csId)?.classList.remove('open');
+    document.getElementById('csdisp-' + _csId)?.classList.remove('open');
+  }
+  _csId = null;
+  // Remove floating overlays injected into body
+  document.getElementById('color-picker-overlay')?.remove();
+  document.getElementById('lp-menu')?.remove();
+  // Reset body overflow
+  document.body.style.overflow = '';
+}
+
+// ── OPEN DIALOG — track in nav stack ─────────────────────
+function openDlg(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Push a state for this dialog so back button can close it
+  history.pushState({ navId: 'dlg', dlgId: id }, '');
+}
+
+// ── CLOSE DIALOG — clean everything ──────────────────────
+function closeDlg(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('open');
+  // Also close any floating overlays that belong to this dialog
+  document.getElementById('color-picker-overlay')?.remove();
+  document.getElementById('lp-menu')?.remove();
+  // Reset overflow only when no more dialogs are open
+  if (!document.querySelector('.bd.open')) {
+    document.body.style.overflow = '';
+  }
+}
+
+// ── BACK NAVIGATION — popstate handler ───────────────────
+// Remove any old listener by replacing the whole thing
+window._navHandlerActive = false;
+if (!window._navHandlerActive) {
+  window._navHandlerActive = true;
+
+  window.addEventListener('popstate', () => {
+    // 1. Close floating overlays first
+    const colorOverlay = document.getElementById('color-picker-overlay');
+    if (colorOverlay) { colorOverlay.remove(); return; }
+
+    const lpMenu = document.getElementById('lp-menu');
+    if (lpMenu) { lpMenu.remove(); return; }
+
+    // 2. Close custom select sheet
+    const csSheet = document.getElementById('cs-sheet');
+    if (csSheet && csSheet.classList.contains('open')) {
+      csSheet.classList.remove('open');
+      if (_csId) {
+        document.getElementById('csarr-' + _csId)?.classList.remove('open');
+        document.getElementById('csdisp-' + _csId)?.classList.remove('open');
+      }
+      _csId = null;
+      history.pushState({ navId: 'base' }, '');
+      return;
+    }
+
+    // 3. Close topmost open dialog
+    const openDlgs = [...document.querySelectorAll('.bd.open')];
+    if (openDlgs.length) {
+      const top = openDlgs[openDlgs.length - 1];
+      top.classList.remove('open');
+      if (!document.querySelector('.bd.open')) document.body.style.overflow = '';
+      history.pushState({ navId: 'base' }, '');
+      return;
+    }
+
+    // 4. Navigate back toward dashboard
+    if (curPage !== 'dashboard') {
+      go('dashboard');
+    }
+    // Already on dashboard — let browser handle (back out of app)
+  });
+}
+
+// ── GO — closes ALL panels before switching pages ─────────
+function go(page) {
+  // Close every open panel so nothing bleeds across pages
+  closeAllDlgs();
+
+  curPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('on');
+
+  document.querySelectorAll('.nv').forEach(b =>
+    b.classList.toggle('on', b.dataset.p === page)
+  );
+
+  const titles = { dashboard: 'Quotes', quotes: 'Quotes', inventory: 'Products', customers: 'Clients', settings: 'Settings' };
+  document.getElementById('tbar-title').textContent = titles[page] || 'Quotes';
+
+  const fab  = document.getElementById('fab');
+  const lbl  = document.getElementById('fab-lbl');
+  const fabMap = { dashboard: 'New Quote', quotes: 'New Quote', inventory: 'Add Product', customers: 'Add Client' };
+  if (fabMap[page]) { lbl.textContent = fabMap[page]; fab.classList.remove('gone'); }
+  else fab.classList.add('gone');
+
+  const srchBtn = document.getElementById('btn-srch');
+  if (srchBtn) srchBtn.style.display = page === 'quotes' ? 'flex' : 'none';
+
+  renderPage(page);
+  updateNavBadges();
+
+  // Push a page-level history state
+  history.pushState({ navId: 'page', page }, '');
+}
+
+// ── COLOUR PICKER — auto-close when parent dialog closes ──
+// Patch closeColorPicker to also clean up properly
+window.closeColorPicker = function() {
+  const el = document.getElementById('color-picker-overlay');
+  if (el) el.remove();
+  // Don't call any callback on plain close
+};
+// cpConfirm already calls closeColorPicker then callback — that's fine
+
+// ── SIGNATURE PAD — fix: open INSIDE dlg-set correctly ───
+window.openSignaturePad = function(spId) {
+  document.getElementById('set-ttl').textContent = 'Draw Signature';
+  document.getElementById('set-body').innerHTML = `
+    <div style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.6">
+      Draw your signature using your finger or mouse. Use clear strokes on the white area.
+    </div>
+    <div style="border:2px solid var(--ol);border-radius:10px;overflow:hidden;background:#fff;touch-action:none;position:relative">
+      <canvas id="sig-canvas" width="340" height="180"
+        style="display:block;width:100%;cursor:crosshair;background:#fff"></canvas>
+      <div style="position:absolute;top:8px;right:8px;font-size:10px;color:#ccc;pointer-events:none">Sign here</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn bo" style="flex:1" onclick="clearSigPad()">
+        <span class="material-icons-round">clear</span> Clear
+      </button>
+      <button class="btn bp" style="flex:1" onclick="saveSigPad('${spId || ''}')">
+        <span class="material-icons-round">check</span> Save Signature
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:10px">
+      PNG with transparent background works best for upload
+    </div>`;
+
+  // Open dlg-set if not already open
+  if (!document.getElementById('dlg-set').classList.contains('open')) {
+    openDlg('dlg-set');
+  }
+
+  setTimeout(initSigPad, 120);
+  pushNav('sigpad-' + (spId || 'new'));
+};
+
+// ── INIT NAV ──────────────────────────────────────────────
+function initNav() {
+  history.replaceState({ navId: 'base' }, '');
+}
+
+// ── PATCH openQE — ensure fresh state ────────────────────
+const __origOpenQE = window.openQE;
+window.openQE = function(qid) {
+  closeAllDlgs('dlg-qe');
+  __origOpenQE(qid);
+};
+
+// ── PATCH openQD ──────────────────────────────────────────
+const __origOpenQD = window.openQD;
+window.openQD = function(qid) {
+  // Close action sheet if open but keep qd-body fresh
+  document.getElementById('dlg-qact')?.classList.remove('open');
+  document.getElementById('dlg-set')?.classList.remove('open');
+  document.getElementById('color-picker-overlay')?.remove();
+  __origOpenQD(qid);
+};
+
+// ── PATCH openQAct ────────────────────────────────────────
+const __origOpenQAct = window.openQAct;
+window.openQAct = function(qid) {
+  document.getElementById('dlg-set')?.classList.remove('open');
+  __origOpenQAct(qid);
+};
+
+// ── PATCH openCoEd — close sig pad / colour picker first ──
+const __origOpenCoEd = window.openCoEd;
+window.openCoEd = function(id) {
+  document.getElementById('color-picker-overlay')?.remove();
+  document.getElementById('dlg-spe')?.classList.remove('open');
+  __origOpenCoEd(id);
+};
+
+// ── PATCH openSpEd — close colour picker if open ─────────
+const __origOpenSpEd = window.openSpEd;
+window.openSpEd = function(id) {
+  document.getElementById('color-picker-overlay')?.remove();
+  __origOpenSpEd(id);
+};
+
+// ── PATCH openSetSheet — always starts fresh ──────────────
+const __origOpenSetSheet = window.openSetSheet;
+window.openSetSheet = function(type) {
+  // Close colour picker if open
+  document.getElementById('color-picker-overlay')?.remove();
+  __origOpenSetSheet(type);
+};
+
+// ── PATCH openColorPicker — ensure it appears ON TOP of dlg-co ──
+const __origOpenColorPicker = window.openColorPicker;
+window.openColorPicker = function(currentColor, onSelect) {
+  // Remove any stale one first
+  document.getElementById('color-picker-overlay')?.remove();
+  __origOpenColorPicker(currentColor, onSelect);
+  // Ensure colour picker z-index is above all dialogs (z-index: 9000)
+  const overlay = document.getElementById('color-picker-overlay');
+  if (overlay) overlay.style.zIndex = '9000';
+};
+
+// ── PATCH openSalesTeam — closes other sheets ────────────
+const __origOpenSalesTeam = window.openSalesTeam;
+window.openSalesTeam = function() {
+  document.getElementById('dlg-spe')?.classList.remove('open');
+  document.getElementById('dlg-set')?.classList.remove('open');
+  __origOpenSalesTeam();
+};
+
+// ── PATCH openAnalytics ───────────────────────────────────
+const __origOpenAnalytics = window.openAnalytics;
+window.openAnalytics = function() {
+  document.getElementById('color-picker-overlay')?.remove();
+  document.getElementById('lp-menu')?.remove();
+  __origOpenAnalytics();
+};
+
+// ── PATCH openTemplates ───────────────────────────────────
+const __origOpenTemplates = window.openTemplates;
+window.openTemplates = function() {
+  document.getElementById('dlg-set')?.classList.remove('open');
+  __origOpenTemplates();
+};
+
+// ── PATCH openEstimator ───────────────────────────────────
+const __origOpenEstimator = window.openEstimator;
+window.openEstimator = function() {
+  document.getElementById('color-picker-overlay')?.remove();
+  document.getElementById('lp-menu')?.remove();
+  __origOpenEstimator();
+};
+
+// ── PATCH openMore ─────────────────────────────────────────
+const __origOpenMore = window.openMore;
+window.openMore = function() {
+  document.getElementById('color-picker-overlay')?.remove();
+  document.getElementById('lp-menu')?.remove();
+  __origOpenMore();
+};
+
+// ── PATCH go — called from nav tabs ──────────────────────
+// Already patched above but ensure swipe cards reset too
+document.querySelectorAll('.nv').forEach(btn => {
+  const orig = btn.getAttribute('onclick');
+  btn.setAttribute('onclick', `closeAllDlgs();${orig}`);
+});
+
+// ── FIX: saveSigPad — check canvas not blank ─────────────
+window.saveSigPad = function(spId) {
+  const c = document.getElementById('sig-canvas');
+  if (!c) { snack('Signature canvas not found'); return; }
+
+  const ctx = c.getContext('2d');
+  const data = ctx.getImageData(0, 0, c.width, c.height).data;
+  const hasContent = Array.from(data).some((v, i) => i % 4 === 3 && v > 0);
+  if (!hasContent) { showErr('Please draw your signature first'); return; }
+
+  const dataUrl = c.toDataURL('image/png');
+
+  // Save to the salesperson if an ID was passed
+  if (spId) {
+    const sp = getSP(spId);
+    if (sp) {
+      sp.signatureImg = dataUrl;
+      save();
+      snack('✓ Signature saved to ' + sp.name);
+    } else {
+      // Might be saving a new SP not yet in DB — store in hidden field
+      const hidEl = document.getElementById('sp-sig-img');
+      if (hidEl) hidEl.value = dataUrl;
+      const prev = document.getElementById('sp-sig-preview');
+      if (prev) prev.innerHTML = `<img src="${dataUrl}" style="max-height:70px;max-width:240px;object-fit:contain">`;
+      snack('✓ Signature ready — save the salesperson to apply it');
+    }
+  } else {
+    // No ID — just update the form field in the currently open SP editor
+    const hidEl = document.getElementById('sp-sig-img');
+    if (hidEl) hidEl.value = dataUrl;
+    const prev = document.getElementById('sp-sig-preview');
+    if (prev) prev.innerHTML = `<img src="${dataUrl}" style="max-height:70px;max-width:240px;object-fit:contain">`;
+    snack('✓ Signature ready — tap Save to apply');
+  }
+
+  closeDlg('dlg-set');
+  hap(20);
+};
+
+// ── FIX: previewSpSig — update the correct preview element ──
+window.previewSpSig = function(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    const hidEl = document.getElementById('sp-sig-img');
+    if (hidEl) hidEl.value = e.target.result;
+    const prev = document.getElementById('sp-sig-preview');
+    if (prev) prev.innerHTML = `<img src="${e.target.result}" style="max-height:70px;max-width:240px;object-fit:contain;border-radius:4px">`;
+    snack('✓ Signature image loaded — tap Save to apply');
+  };
+  r.readAsDataURL(file);
+};
+
+// ── FIX: clearSpSig ───────────────────────────────────────
+window.clearSpSig = function() {
+  const hidEl = document.getElementById('sp-sig-img');
+  if (hidEl) hidEl.value = '';
+  const prev = document.getElementById('sp-sig-preview');
+  if (prev) prev.innerHTML = `
+    <div style="text-align:center;color:var(--t3)">
+      <span class="material-icons-round" style="font-size:36px;display:block;margin-bottom:4px">draw</span>
+      <div style="font-size:12px">No signature</div>
+    </div>`;
+};
+
+// ── FIX: qeStep must be in window scope ──────────────────
+// Ensure the live totals bar responds correctly
+Object.defineProperty(window, 'qeStep', {
+  get() { return this._qeStep || 0; },
+  set(v) {
+    this._qeStep = v;
+    const w = document.getElementById('qe-live-wrap');
+    if (w) w.style.display = v === 2 ? 'flex' : 'none';
+  },
+  configurable: true
+});
+
+// ── FIX: closing dlg-qe should also close child panels ───
+const __origCloseDlgQE = closeDlg;
+// Patch the close button inside QE to clean up properly
+document.addEventListener('DOMContentLoaded', () => {
+  // Ensure closeDlg('dlg-qe') also closes any sheets that opened from inside QE
+  const qeClose = document.querySelector('#dlg-qe .ib');
+  if (qeClose) {
+    qeClose.onclick = () => {
+      document.getElementById('cs-sheet')?.classList.remove('open');
+      document.getElementById('color-picker-overlay')?.remove();
+      closeDlg('dlg-qe');
+    };
+  }
+});
+
+// ── FIX: applyLogoColor — called from colour picker cb ───
+window.applyLogoColor = function(color) {
+  const hid = document.getElementById('co-logo-color');
+  if (hid) hid.value = color;
+  const prev = document.getElementById('logo-prev');
+  if (prev && !document.getElementById('co-img')?.value) prev.style.background = color;
+  const btn = document.getElementById('co-color-btn');
+  if (btn) btn.style.background = color;
+  const hex = document.getElementById('co-color-hex');
+  if (hex) { hex.textContent = color; hex.style.color = isLightColor(color) ? '#333' : '#fff'; }
+};
+
+// Helper: detect if colour is light (for hex text contrast)
+function isLightColor(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return (r*299 + g*587 + b*114) / 1000 > 128;
+}
+
+// ── FIX: csClose also removes open state from all display elements ──
+window.csClose = function() {
+  const sheet = document.getElementById('cs-sheet');
+  if (sheet) sheet.classList.remove('open');
+  if (_csId) {
+    document.getElementById('csarr-' + _csId)?.classList.remove('open');
+    document.getElementById('csdisp-' + _csId)?.classList.remove('open');
+  }
+  _csId = null;
+  // Don't mess with body overflow — cs-sheet is not a .bd
+};
+
+// ── PUSH NAV helper ────────────────────────────────────────
+function pushNav(id) {
+  history.pushState({ navId: id }, '');
+}
+
+// ── Keyboard: Escape closes topmost overlay/dialog ────────
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  // Colour picker first
+  if (document.getElementById('color-picker-overlay')) { closeColorPicker(); return; }
+  // LP menu
+  if (document.getElementById('lp-menu')) { document.getElementById('lp-menu').remove(); return; }
+  // CS sheet
+  if (document.getElementById('cs-sheet')?.classList.contains('open')) { csClose(); return; }
+  // Topmost dialog
+  const openDlgs = [...document.querySelectorAll('.bd.open')];
+  if (openDlgs.length) { closeDlg(openDlgs[openDlgs.length-1].id); return; }
+  // Page nav
+  if (curPage !== 'dashboard') go('dashboard');
+});
+
+console.log('✅ Navigation system v6 loaded');
+// ── ACCENT COLOUR PICKER — uses same custom widget ────────
+window.openAccentPicker = function() {
+  const currentColor = (() => {
+    const acc = ACCENTS.find(a => a.name === DB.settings.accentName) || ACCENTS[0];
+    return DB.settings.darkMode ? acc.dc : acc.lc;
+  })();
+
+  openColorPicker(currentColor, (color) => {
+    // Find closest named accent or store as custom
+    const closest = ACCENTS.find(a => a.lc === color || a.dc === color);
+    if (closest) {
+      DB.settings.accentName = closest.name;
+    } else {
+      // Store as custom accent — add/overwrite the Custom entry
+      const customIdx = ACCENTS.findIndex(a => a.name === 'Custom');
+      if (customIdx >= 0) {
+        ACCENTS[customIdx] = { name: 'Custom', lc: color, dc: color };
+      } else {
+        ACCENTS.push({ name: 'Custom', lc: color, dc: color });
+      }
+      DB.settings.accentName = 'Custom';
+    }
+    // Apply immediately
+    document.documentElement.style.setProperty('--P', color);
+    document.documentElement.style.setProperty('--PC',
+      DB.settings.darkMode ? 'rgba(138,180,248,0.15)' : color + '1A');
+    document.getElementById('theme-meta').content = DB.settings.darkMode ? '#1E1E1E' : color;
+    document.getElementById('acc-sub').textContent = DB.settings.accentName;
+    save();
+    snack('✓ Accent colour updated');
+    hap(15);
+  });
+};
+
+// Keep setAccent working for any legacy calls
+window.setAccent = function(name) {
+  DB.settings.accentName = name;
+  save();
+  applyTheme();
+  document.getElementById('acc-sub').textContent = name;
+  snack('Accent updated');
+};

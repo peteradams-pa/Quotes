@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Quotes">
-<title>Quotes PWA v5</title>
+<title>Quotes PWA</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,175 +16,524 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-:root{--P:#1A73E8;--PC:#E8F0FE;--S:#34A853;--E:#EA4335;--W:#F9AB00;--bg:#F0F2F5;--su:#fff;--su2:#F8F9FA;--su3:#F1F3F4;--t1:#1C1C1C;--t2:#5F6368;--t3:#9AA0A6;--ol:#E0E0E0;--ol2:#EBEBEB;--sh:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);--sh2:0 4px 16px rgba(0,0,0,.18);--rip:rgba(26,115,232,.1);--nh:64px;--bh:52px}
-[data-theme=dark]{--P:#8AB4F8;--PC:#1A3560;--S:#81C995;--E:#F28B82;--W:#FDD663;--bg:#111;--su:#1E1E1E;--su2:#252525;--su3:#2A2A2A;--t1:#E8EAED;--t2:#9AA0A6;--t3:#5F6368;--ol:#333;--ol2:#2A2A2A;--sh:0 1px 4px rgba(0,0,0,.5);--sh2:0 4px 20px rgba(0,0,0,.6);--rip:rgba(138,180,248,.12)}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;font-family:'Inter',ui-sans-serif,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;background:var(--bg);color:var(--t1);overflow:hidden;-webkit-font-smoothing:antialiased}
-#app{display:flex;flex-direction:column;height:100dvh}
-#topbar{background:var(--su);height:var(--bh);display:flex;align-items:center;padding:0 6px 0 16px;gap:8px;flex-shrink:0;box-shadow:0 1px 0 var(--ol);z-index:60}
-#tbar-title{flex:1;font-size:19px;font-weight:800;color:var(--t1);letter-spacing:-.3px}
-#content{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--nh)+16px);-webkit-overflow-scrolling:touch}
-#content::-webkit-scrollbar{width:3px}#content::-webkit-scrollbar-thumb{background:var(--ol);border-radius:2px}
-#nav{background:var(--su);height:var(--nh);display:flex;border-top:1px solid var(--ol);flex-shrink:0;z-index:60;padding-bottom:env(safe-area-inset-bottom,0px)}
-.nv{flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--t2);transition:color .18s;padding:6px 4px 4px;position:relative}
-.nv:hover,.nv:focus{outline:none;color:var(--P)}.nv.on{color:var(--P)}
-.nv-ind{width:54px;height:28px;border-radius:14px;display:flex;align-items:center;justify-content:center;transition:background .18s;position:relative}
-.nv.on .nv-ind{background:var(--PC)}.nv:not(.on):active .nv-ind{background:var(--rip)}
-.nv .material-icons-round{font-size:22px;display:block;pointer-events:none}.nv-lbl{font-size:11px;font-weight:600;pointer-events:none;line-height:1}
-.nav-badge{position:absolute;top:-2px;right:6px;background:var(--E);color:#fff;border-radius:999px;font-size:9px;font-weight:800;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none}
-#fab{position:fixed;right:16px;bottom:calc(var(--nh)+env(safe-area-inset-bottom,0px)+14px);background:var(--P);color:#fff;border:none;cursor:pointer;border-radius:16px;height:52px;padding:0 20px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;font-family:inherit;box-shadow:var(--sh2);transition:transform .15s,filter .15s;z-index:55}
-#fab:active{transform:scale(.96)}#fab.gone{display:none!important}#fab .material-icons-round{font-size:22px}
-.page{display:none}.page.on{display:block;animation:fadeUp .22s ease}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes shup{from{transform:translateY(100%)}to{transform:none}}
-@keyframes bfi{from{opacity:0}to{opacity:1}}
-@keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
-.ib{width:40px;height:40px;border-radius:50%;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);transition:background .15s;flex-shrink:0}
-.ib:hover,.ib:focus{background:var(--rip);outline:none}.ib .material-icons-round{font-size:22px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 20px;border-radius:999px;border:none;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0;text-decoration:none}
-.btn .material-icons-round{font-size:18px}
-.bp{background:var(--P);color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}.bp:hover{filter:brightness(1.08)}
-.bo{background:transparent;color:var(--P);border:1.5px solid var(--P)}.bo:hover{background:var(--PC)}
-.bt{background:transparent;color:var(--P);padding:0 12px}.bt:hover{background:var(--PC)}
-.bd2{background:var(--E);color:#fff}.btn-sm{height:34px;padding:0 14px;font-size:13px}.btn-w{width:100%}.btn-ton{background:var(--PC);color:var(--P)}
-.card{background:var(--su);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
-.fg{margin-bottom:13px}.fl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:4px;letter-spacing:.15px}
-.fi{width:100%;padding:10px 13px;border:1.5px solid var(--ol);border-radius:8px;background:var(--su);color:var(--t1);font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
-.fi:focus{outline:none;border-color:var(--P);box-shadow:0 0 0 3px var(--rip)}.fi::placeholder{color:var(--t3)}.fi[readonly]{background:var(--su3);color:var(--t2)}
-textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-/* Custom select */
-.cs-wrap{position:relative;display:block}
-.cs-display{width:100%;padding:10px 38px 10px 13px;border:1.5px solid var(--ol);border-radius:8px;background:var(--su);color:var(--t1);font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;transition:border-color .15s,box-shadow .15s;user-select:none;min-height:43px}
-.cs-display:focus,.cs-display.open{border-color:var(--P);box-shadow:0 0 0 3px var(--rip);outline:none}
-.cs-display-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cs-display-text.placeholder{color:var(--t3)}
-.cs-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--t2);font-size:20px;transition:transform .2s}.cs-arrow.open{transform:translateY(-50%) rotate(180deg)}
-#cs-sheet{position:fixed;inset:0;z-index:500;display:none;background:rgba(0,0,0,.5);animation:bfi .18s}
-#cs-sheet.open{display:flex;align-items:flex-end;justify-content:center}
-#cs-inner{background:var(--su);width:100%;max-width:600px;border-radius:16px 16px 0 0;max-height:70dvh;display:flex;flex-direction:column;animation:shup .25s cubic-bezier(.2,0,0,1);padding-bottom:env(safe-area-inset-bottom,0px)}
-#cs-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--ol2);flex-shrink:0}
-#cs-title{font-size:15px;font-weight:700}
-#cs-search-wrap{padding:10px 16px 6px;flex-shrink:0}
-#cs-search{width:100%;padding:9px 13px;border:1.5px solid var(--ol);border-radius:8px;background:var(--su2);color:var(--t1);font-size:14px;font-family:inherit}
-#cs-search:focus{outline:none;border-color:var(--P);box-shadow:0 0 0 3px var(--rip)}
-#cs-list{overflow-y:auto;flex:1}
-.cs-opt{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--ol2);cursor:pointer;gap:12px;transition:background .1s;font-size:14px;color:var(--t1)}
-.cs-opt:last-child{border-bottom:none}.cs-opt:active{background:var(--su3)}.cs-opt.selected{color:var(--P);font-weight:600}
-.cs-opt-check{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px}
-.cs-opt.selected .cs-opt-check{background:var(--P);color:#fff}.cs-opt:not(.selected) .cs-opt-check{border:1.5px solid var(--ol)}
-.cs-opt-label{flex:1}.cs-opt-sub{font-size:12px;color:var(--t2);margin-top:1px}
-/* Toggle */
-.tog{width:46px;height:26px;border-radius:13px;border:none;cursor:pointer;background:var(--ol);position:relative;transition:background .2s;flex-shrink:0}
-.tog.on{background:var(--P)}.tog::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}.tog.on::after{left:23px}
-/* Chips */
-.chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.1px}
-.cs-Draft{background:#E8F0FE;color:#1557B0}.cs-Sent{background:#FEF3E2;color:#B06000}.cs-Won{background:#E6F4EA;color:#1E6E3A}.cs-Lost{background:#FCE8E6;color:#B01010}.cs-Expired{background:var(--su3);color:var(--t2)}
-[data-theme=dark] .cs-Draft{background:#1A3560;color:#8AB4F8}[data-theme=dark] .cs-Sent{background:#3A2000;color:#FDD663}[data-theme=dark] .cs-Won{background:#0A2E14;color:#81C995}[data-theme=dark] .cs-Lost{background:#3A0A0A;color:#F28B82}
-/* Filter bars */
-.fbar{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;scrollbar-width:none}.fbar::-webkit-scrollbar{display:none}
-.fc{flex-shrink:0;padding:6px 16px;border-radius:999px;border:1.5px solid var(--ol);background:var(--su);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit;-webkit-appearance:none}.fc.on{background:var(--P);color:#fff;border-color:var(--P)}
-/* Search bar */
-.sb{display:flex;align-items:center;gap:10px;padding:0 13px;background:var(--su);border:1.5px solid var(--ol);border-radius:999px;transition:border-color .15s,box-shadow .15s;margin:10px 16px 4px}
-.sb:focus-within{border-color:var(--P);box-shadow:0 0 0 3px var(--rip)}.sb input{flex:1;border:none;background:transparent;padding:10px 0;font-size:15px;color:var(--t1);font-family:inherit}.sb input:focus{outline:none}.sb input::placeholder{color:var(--t3)}.sb .material-icons-round{color:var(--t3);font-size:20px}
-/* Quote cards */
-.qi{background:var(--su);border-radius:12px;padding:14px 16px;cursor:pointer;box-shadow:var(--sh);transition:transform .12s;position:relative;overflow:hidden}
-.qi:active{transform:scale(.99)}.qi.bulk-selected{box-shadow:0 0 0 2px var(--P),var(--sh2)}
-.qi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px}.qi-id{font-size:12px;font-weight:700;color:var(--P)}.qi-amt{font-size:18px;font-weight:800;line-height:1;color:var(--t1)}.qi-co{font-size:14px;font-weight:600;margin:2px 0;color:var(--t1)}.qi-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px}.qi-date{font-size:12px;color:var(--t2)}
-/* Swipe actions */
-.swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch}
-.swipe-actions button{width:56px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-family:inherit}
-.swipe-actions button:first-child{background:#4285F4}.swipe-actions button:nth-child(2){background:#888}.swipe-actions button.del-btn{background:var(--E);border-radius:0 12px 12px 0}.swipe-actions .material-icons-round{font-size:20px}
-/* Metrics */
-.met{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px}
-.mc{background:var(--su);border-radius:12px;padding:14px;box-shadow:var(--sh)}.mv{font-size:24px;font-weight:800;line-height:1}.mlb{font-size:12px;color:var(--t2);margin-top:4px}
-.mc.bl .mv{color:var(--P)}.mc.gr .mv{color:var(--S)}.mc.re .mv{color:var(--E)}.mc.or .mv{color:#E65100}[data-theme=dark] .mc.or .mv{color:var(--W)}
-/* Detail blocks */
-.db2{background:var(--su);border-radius:12px;margin:8px 16px;overflow:hidden;box-shadow:var(--sh)}
-.dh2{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--su2);border-bottom:1px solid var(--ol2)}
-.dht{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2)}
-.dr{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--ol2)}.dr:last-child{border-bottom:none}
-.dk{font-size:13px;color:var(--t2);min-width:90px;flex-shrink:0}.dv{font-size:13px;font-weight:500;color:var(--t1);text-align:right;flex:1;word-break:break-word}
-/* Totals */
-.tots{background:var(--su);border-radius:12px;margin:8px 16px;padding:14px 16px;box-shadow:var(--sh)}
-.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}.tr2.grand{border-top:2px solid var(--P);margin-top:8px;padding-top:10px}.tr2.grand .tk{font-size:16px;font-weight:700}.tr2.grand .tv{font-size:16px;font-weight:800;color:var(--P)}.tk{color:var(--t2)}.tv{font-weight:600;color:var(--t1)}
-.st{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--t2);padding:13px 16px 5px;display:flex;align-items:center;justify-content:space-between}
-/* Settings rows */
-.si{display:flex;align-items:center;gap:13px;padding:13px 16px;border-bottom:1px solid var(--ol2);cursor:pointer;transition:background .12s;user-select:none}.si:last-child{border-bottom:none}.si:active{background:var(--su3)}
-.si-ic{width:38px;height:38px;border-radius:50%;background:var(--PC);color:var(--P);display:flex;align-items:center;justify-content:center;flex-shrink:0}.si-ic .material-icons-round{font-size:20px}.si-ic.red{background:rgba(234,67,53,.12);color:var(--E)}.si-ic.grn{background:rgba(52,168,83,.12);color:var(--S)}.si-ic.ora{background:rgba(249,171,0,.15);color:#B06000}[data-theme=dark] .si-ic.ora{color:var(--W)}
-.si-tx{flex:1;min-width:0}.si-m{font-size:15px;font-weight:500}.si-s{font-size:12px;color:var(--t2);margin-top:1px}
-.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0}
-/* Inventory */
-.ii{background:var(--su);border-radius:12px;padding:14px 16px;cursor:pointer;box-shadow:var(--sh);transition:box-shadow .15s}.ii:active{box-shadow:var(--sh2)}
-/* Tiers */
-.tier-Gold{background:#FEF9C3;color:#854D0E;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.tier-Platinum{background:#F3E8FF;color:#6B21A8;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.tier-Silver{background:#F1F5F9;color:#334155;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.tier-Bronze{background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
-[data-theme=dark] .tier-Gold{background:#3F2A00;color:#FCD34D}[data-theme=dark] .tier-Platinum{background:#2E1065;color:#D8B4FE}[data-theme=dark] .tier-Silver{background:#1E293B;color:#94A3B8}[data-theme=dark] .tier-Bronze{background:#3F1A00;color:#FCA17C}
-/* Empty */
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:52px 24px;gap:10px;text-align:center}.empty .material-icons-round{font-size:52px;color:var(--ol)}.empty-t{font-size:17px;font-weight:600;color:var(--t2)}.empty-s{font-size:13px;color:var(--t3);max-width:220px;line-height:1.5}
-/* Line items */
-.lir{background:var(--su2);border-radius:8px;padding:11px;margin-bottom:8px;border:1.5px solid var(--ol2)}.lir-top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-/* Steps */
-.steps{display:flex;align-items:center;padding:9px 16px;background:var(--su2);border-bottom:1px solid var(--ol2)}.sd{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;background:var(--ol);color:var(--t2);transition:all .2s}.sd.a{background:var(--P);color:#fff}.sd.d{background:var(--S);color:#fff}.sl{flex:1;height:2px;background:var(--ol);transition:background .2s}.sl.d{background:var(--S)}
-/* Bars */
-.pbar{height:6px;border-radius:3px;background:var(--ol2);overflow:hidden;margin-top:5px}.pfill{height:100%;border-radius:3px;transition:width .5s ease}
-/* Payment card */
-.pmcard{background:var(--su2);border-radius:8px;padding:12px;border:1.5px solid var(--ol2);margin-bottom:8px}.pmhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}.pm-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--PC);color:var(--P)}
-/* Salesperson card */
-.spc{background:var(--su);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);cursor:pointer}.spc:active{background:var(--su2)}
-/* Snackbar */
-#snack{position:fixed;left:16px;right:16px;bottom:calc(var(--nh)+10px);background:#303030;color:#fff;border-radius:8px;padding:12px 16px;font-size:14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:9999;transform:translateY(120%);opacity:0;transition:all .3s ease;pointer-events:none}
-#snack.show{transform:none;opacity:1;pointer-events:auto}#snack-act{color:#8AB4F8;font-weight:700;cursor:pointer;margin-left:8px;flex-shrink:0}
-/* Banners */
-#update-banner{position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--S);color:#fff;padding:10px 16px;display:none;align-items:center;gap:10px;font-size:13px;font-weight:600}#update-banner.show{display:flex}
-#offline-dot{position:fixed;top:10px;right:56px;z-index:9997;background:var(--E);color:#fff;border-radius:999px;font-size:10px;font-weight:700;padding:2px 8px;display:none;align-items:center;gap:4px}
-/* Dialogs */
-.bd{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;animation:bfi .18s}.bd.open{display:flex;align-items:flex-end}.bd.ctr{align-items:center;justify-content:center}.bd.ful{align-items:stretch}
-.sh{background:var(--su);width:100%;border-radius:16px 16px 0 0;max-height:93dvh;overflow-y:auto;animation:shup .28s ease;padding-bottom:env(safe-area-inset-bottom,0px)}.sh.fh{border-radius:0;max-height:100dvh;height:100dvh;overflow-y:auto}
-.dh{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--ol2);position:sticky;top:0;background:var(--su);z-index:10}.dt{flex:1;font-size:17px;font-weight:700}.db{padding:16px}
-.sp{height:16px}.sp-s{height:8px}
-.txt-p{color:var(--P)}.txt-e{color:var(--E)}.txt-m{color:var(--t2);font-size:13px}.fw7{font-weight:700}.cdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
-/* Alert cards */
-.alert-card{background:var(--su);border-radius:12px;padding:12px 16px;border-left:4px solid var(--W);box-shadow:var(--sh);cursor:pointer}.alert-card.danger{border-left-color:var(--E)}.alert-card.info{border-left-color:var(--P)}
-/* Chart */
-.chart-wrap{background:var(--su);border-radius:12px;margin:0 16px;padding:14px 16px;box-shadow:var(--sh);overflow:hidden}.chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px;margin-top:10px}.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}.chart-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;transition:height .4s ease;background:var(--P);opacity:.7}.chart-bar.active{opacity:1}.chart-bar-lbl{font-size:9px;color:var(--t2);font-weight:600;white-space:nowrap}
-/* Rev history */
-.rev-item{padding:12px 16px;border-bottom:1px solid var(--ol2);cursor:pointer;transition:background .1s}.rev-item:last-child{border-bottom:none}.rev-item:active{background:var(--su3)}.rev-dot{width:8px;height:8px;border-radius:50%;background:var(--P);flex-shrink:0;margin-top:5px}.rev-item.current .rev-dot{background:var(--S)}
-/* Templates */
-.tpl-card{background:var(--su);border-radius:12px;padding:14px 16px;box-shadow:var(--sh);cursor:pointer;transition:transform .12s}.tpl-card:active{transform:scale(.99)}
-/* Follow-up badge */
-.fu-badge{display:inline-flex;align-items:center;gap:4px;background:#FFF3E0;color:#B06000;border-radius:999px;font-size:11px;font-weight:700;padding:2px 8px}[data-theme=dark] .fu-badge{background:#3A2000;color:var(--W)}
-/* Preview */
-.prev-outer{background:#C8C8C8;min-height:100%;display:flex;flex-direction:column;align-items:center;padding:16px 0 40px;gap:16px;overflow-x:hidden;overflow-y:auto}[data-theme=dark] .prev-outer{background:#1A1A1A}
-.prev-iframe-wrap{box-shadow:0 2px 16px rgba(0,0,0,.3);background:#fff}.prev-iframe-wrap iframe{border:none;display:block}
-/* Autocomplete */
-.ac-input{padding-right:36px!important}
-.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--su);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.12);border:1.5px solid var(--ol);z-index:999;overflow:hidden;max-height:280px;overflow-y:auto;animation:dropIn .15s ease}
-.ac-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--ol2);transition:background .1s}.ac-item:last-child{border-bottom:none}.ac-item:hover,.ac-item.ac-active{background:var(--PC)}.ac-custom{opacity:.75}.ac-custom:hover{opacity:1}.ac-dropdown::-webkit-scrollbar{width:4px}.ac-dropdown::-webkit-scrollbar-thumb{background:var(--ol);border-radius:2px}
-/* Onboarding */
-#d-onboarding{padding:0 16px 8px;display:none}.ob-card{background:var(--su);border-radius:12px;padding:14px 16px;box-shadow:var(--sh)}.ob-step{display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--ol2)}.ob-step:last-child{border-bottom:none}.ob-step.done{cursor:default}.ob-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--PC);color:var(--P)}.ob-step.done .ob-icon{background:#E6F4EA;color:var(--S)}
-/* Win animation */
-#win-anim{position:fixed;inset:0;z-index:10000;pointer-events:none;display:none}.confetti-piece{position:absolute;top:0;animation:confettiFall 1.4s ease-in forwards;font-size:24px}
-/* Live totals bar */
-#qe-live-wrap{position:sticky;bottom:0;background:var(--su);border-top:1px solid var(--ol2);padding:10px 16px;display:none;align-items:center;justify-content:space-between;gap:8px;z-index:10;box-shadow:0 -2px 10px rgba(0,0,0,.08)}
-#qe-live-tots{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap}
-/* Sticky bottom actions */
-#qd-actions-wrap{position:sticky;bottom:0;background:var(--su);border-top:1px solid var(--ol2);padding:10px 16px;display:flex;gap:8px;z-index:10;box-shadow:0 -2px 10px rgba(0,0,0,.08)}
-/* Bulk bar */
-#bulk-bar{position:sticky;top:var(--bh);z-index:59;background:var(--P);color:#fff;padding:10px 16px;display:none;align-items:center;gap:10px}
-#bulk-count{flex:1;font-size:13px;font-weight:700}
-/* Dashboard collapsible */
-.dash-sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px;cursor:pointer;user-select:none}.dash-sec-hdr:active{background:var(--su2)}
-/* Responsive */
-@media(min-width:600px){.met{grid-template-columns:repeat(4,1fr)}.bd:not(.ful):not(.ctr) .sh{max-width:520px;margin:auto;border-radius:16px}.bd:not(.ful):not(.ctr){align-items:center}}
+/* ── TOKENS ─────────────────────────────────────────── */
+:root {
+  --P:#1A73E8; --PC:#E8F0FE; --S:#34A853; --E:#EA4335; --W:#F9AB00;
+  --bg:#F0F2F5; --su:#fff; --su2:#F8F9FA; --su3:#F1F3F4;
+  --t1:#1C1C1C; --t2:#5F6368; --t3:#9AA0A6;
+  --ol:#E0E0E0; --ol2:#EBEBEB;
+  --sh:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+  --sh2:0 4px 16px rgba(0,0,0,.18);
+  --rip:rgba(26,115,232,.1);
+  --nh:64px; --bh:52px;
+}
+[data-theme=dark] {
+  --P:#8AB4F8; --PC:#1A3560; --S:#81C995; --E:#F28B82; --W:#FDD663;
+  --bg:#111; --su:#1E1E1E; --su2:#252525; --su3:#2A2A2A;
+  --t1:#E8EAED; --t2:#9AA0A6; --t3:#5F6368;
+  --ol:#333; --ol2:#2A2A2A;
+  --sh:0 1px 4px rgba(0,0,0,.5); --sh2:0 4px 20px rgba(0,0,0,.6);
+  --rip:rgba(138,180,248,.12);
+}
+
+/* ── RESET & BASE ────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: 'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 14px; background: var(--bg); color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── APP SHELL ───────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100dvh; }
+
+#topbar {
+  background: var(--su); height: var(--bh);
+  display: flex; align-items: center; padding: 0 6px 0 16px; gap: 8px;
+  flex-shrink: 0; box-shadow: 0 1px 0 var(--ol); z-index: 60;
+}
+#tbar-title { flex: 1; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
+
+#content {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding-bottom: calc(var(--nh) + 16px);
+  -webkit-overflow-scrolling: touch;
+}
+#content::-webkit-scrollbar { width: 3px; }
+#content::-webkit-scrollbar-thumb { background: var(--ol); border-radius: 2px; }
+
+/* ── BOTTOM NAV ─────────────────────────────────────── */
+#nav {
+  background: var(--su); height: var(--nh);
+  display: flex; border-top: 1px solid var(--ol);
+  flex-shrink: 0; z-index: 60;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nv {
+  flex: 1; border: none; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; color: var(--t2); transition: color .18s;
+  padding: 6px 4px 4px; position: relative;
+}
+.nv:hover, .nv:focus { outline: none; color: var(--P); }
+.nv.on { color: var(--P); }
+.nv-ind {
+  width: 54px; height: 28px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .18s; position: relative;
+}
+.nv.on .nv-ind { background: var(--PC); }
+.nv:not(.on):active .nv-ind { background: var(--rip); }
+.nv .material-icons-round { font-size: 22px; display: block; pointer-events: none; }
+.nv-lbl { font-size: 11px; font-weight: 600; pointer-events: none; line-height: 1; }
+.nav-badge {
+  position: absolute; top: -2px; right: 6px;
+  background: var(--E); color: #fff; border-radius: 999px;
+  font-size: 9px; font-weight: 800; min-width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 3px; pointer-events: none;
+}
+
+/* ── FAB ─────────────────────────────────────────────── */
+#fab {
+  position: fixed; right: 16px;
+  bottom: calc(var(--nh) + env(safe-area-inset-bottom, 0px) + 14px);
+  background: var(--P); color: #fff; border: none; cursor: pointer;
+  border-radius: 16px; height: 52px; padding: 0 20px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; font-family: inherit;
+  box-shadow: var(--sh2); transition: transform .15s, filter .15s; z-index: 55;
+}
+#fab:active { transform: scale(.96); }
+#fab.gone { display: none !important; }
+#fab .material-icons-round { font-size: 22px; }
+
+/* ── PAGES ───────────────────────────────────────────── */
+.page { display: none; }
+.page.on { display: block; animation: fadeUp .22s ease; }
+
+/* ── KEYFRAMES ───────────────────────────────────────── */
+@keyframes fadeUp    { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:none } }
+@keyframes spin      { to { transform:rotate(360deg) } }
+@keyframes shup      { from { transform:translateY(100%) } to { transform:none } }
+@keyframes bfi       { from { opacity:0 } to { opacity:1 } }
+@keyframes dropIn    { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:none } }
+@keyframes shake     { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+@keyframes confettiFall { 0% { transform:translateY(-20px) rotate(0deg); opacity:1 } 100% { transform:translateY(100vh) rotate(720deg); opacity:0 } }
+
+/* ── ICON BUTTON ─────────────────────────────────────── */
+.ib {
+  width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--t2); transition: background .15s; flex-shrink: 0;
+}
+.ib:hover, .ib:focus { background: var(--rip); outline: none; }
+.ib .material-icons-round { font-size: 22px; }
+
+/* ── BUTTONS ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 40px; padding: 0 20px; border-radius: 999px; border: none;
+  cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit;
+  transition: all .15s; white-space: nowrap; flex-shrink: 0; text-decoration: none;
+}
+.btn .material-icons-round { font-size: 18px; }
+.bp  { background: var(--P); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.bp:hover { filter: brightness(1.08); }
+.bo  { background: transparent; color: var(--P); border: 1.5px solid var(--P); }
+.bo:hover { background: var(--PC); }
+.bt  { background: transparent; color: var(--P); padding: 0 12px; }
+.bt:hover { background: var(--PC); }
+.bd2 { background: var(--E); color: #fff; }
+.btn-sm  { height: 34px; padding: 0 14px; font-size: 13px; }
+.btn-w   { width: 100%; }
+.btn-ton { background: var(--PC); color: var(--P); }
+
+/* ── FORMS ───────────────────────────────────────────── */
+.fg { margin-bottom: 13px; }
+.fl { display: block; font-size: 12px; font-weight: 600; color: var(--t2); margin-bottom: 4px; letter-spacing: .15px; }
+.fi {
+  width: 100%; padding: 10px 13px;
+  border: 1.5px solid var(--ol); border-radius: 8px;
+  background: var(--su); color: var(--t1);
+  font-size: 14px; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none; appearance: none;
+}
+.fi:focus { outline: none; border-color: var(--P); box-shadow: 0 0 0 3px var(--rip); }
+.fi::placeholder { color: var(--t3); }
+.fi[readonly] { background: var(--su3); color: var(--t2); }
+.fi-err { border-color: var(--E) !important; box-shadow: 0 0 0 3px rgba(234,67,53,.15) !important; animation: shake .3s ease; }
+textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
+.fr  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fr3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* ── TOGGLE ──────────────────────────────────────────── */
+.tog {
+  width: 46px; height: 26px; border-radius: 13px; border: none;
+  cursor: pointer; background: var(--ol); position: relative;
+  transition: background .2s; flex-shrink: 0;
+}
+.tog.on { background: var(--P); }
+.tog::after {
+  content: ''; position: absolute; width: 20px; height: 20px;
+  border-radius: 50%; background: #fff; top: 3px; left: 3px;
+  transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.tog.on::after { left: 23px; }
+
+/* ── CUSTOM SELECT ───────────────────────────────────── */
+.cs-wrap { position: relative; display: block; }
+.cs-display {
+  width: 100%; padding: 10px 38px 10px 13px;
+  border: 1.5px solid var(--ol); border-radius: 8px;
+  background: var(--su); color: var(--t1); font-size: 14px; font-family: inherit;
+  cursor: pointer; display: flex; align-items: center;
+  transition: border-color .15s, box-shadow .15s;
+  user-select: none; min-height: 43px;
+}
+.cs-display:focus, .cs-display.open { border-color: var(--P); box-shadow: 0 0 0 3px var(--rip); outline: none; }
+.cs-display-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-display-text.placeholder { color: var(--t3); }
+.cs-arrow { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--t2); font-size: 20px; transition: transform .2s; }
+.cs-arrow.open { transform: translateY(-50%) rotate(180deg); }
+#cs-sheet { position: fixed; inset: 0; z-index: 500; display: none; background: rgba(0,0,0,.5); animation: bfi .18s; }
+#cs-sheet.open { display: flex; align-items: flex-end; justify-content: center; }
+#cs-inner { background: var(--su); width: 100%; max-width: 600px; border-radius: 16px 16px 0 0; max-height: 70dvh; display: flex; flex-direction: column; animation: shup .25s cubic-bezier(.2,0,0,1); padding-bottom: env(safe-area-inset-bottom, 0px); }
+#cs-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--ol2); flex-shrink: 0; }
+#cs-title { font-size: 15px; font-weight: 700; }
+#cs-search-wrap { padding: 10px 16px 6px; flex-shrink: 0; }
+#cs-search { width: 100%; padding: 9px 13px; border: 1.5px solid var(--ol); border-radius: 8px; background: var(--su2); color: var(--t1); font-size: 14px; font-family: inherit; }
+#cs-search:focus { outline: none; border-color: var(--P); box-shadow: 0 0 0 3px var(--rip); }
+#cs-list { overflow-y: auto; flex: 1; }
+.cs-opt { display: flex; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--ol2); cursor: pointer; gap: 12px; transition: background .1s; font-size: 14px; color: var(--t1); }
+.cs-opt:last-child { border-bottom: none; }
+.cs-opt:active { background: var(--su3); }
+.cs-opt.selected { color: var(--P); font-weight: 600; }
+.cs-opt-check { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.cs-opt.selected .cs-opt-check { background: var(--P); color: #fff; }
+.cs-opt:not(.selected) .cs-opt-check { border: 1.5px solid var(--ol); }
+.cs-opt-label { flex: 1; }
+.cs-opt-sub { font-size: 12px; color: var(--t2); margin-top: 1px; }
+
+/* ── STATUS CHIPS ────────────────────────────────────── */
+.chip { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .1px; }
+.cs-Draft   { background: #E8F0FE; color: #1557B0; }
+.cs-Sent    { background: #FEF3E2; color: #B06000; }
+.cs-Won     { background: #E6F4EA; color: #1E6E3A; }
+.cs-Lost    { background: #FCE8E6; color: #B01010; }
+.cs-Expired { background: var(--su3); color: var(--t2); }
+[data-theme=dark] .cs-Draft   { background: #1A3560; color: #8AB4F8; }
+[data-theme=dark] .cs-Sent    { background: #3A2000; color: #FDD663; }
+[data-theme=dark] .cs-Won     { background: #0A2E14; color: #81C995; }
+[data-theme=dark] .cs-Lost    { background: #3A0A0A; color: #F28B82; }
+
+/* ── FILTER BARS ─────────────────────────────────────── */
+.fbar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 16px; scrollbar-width: none; }
+.fbar::-webkit-scrollbar { display: none; }
+.fc {
+  flex-shrink: 0; padding: 6px 16px; border-radius: 999px;
+  border: 1.5px solid var(--ol); background: var(--su); color: var(--t2);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
+  white-space: nowrap; font-family: inherit; -webkit-appearance: none;
+}
+.fc.on { background: var(--P); color: #fff; border-color: var(--P); }
+
+/* ── SEARCH BAR ──────────────────────────────────────── */
+.sb {
+  display: flex; align-items: center; gap: 10px; padding: 0 13px;
+  background: var(--su); border: 1.5px solid var(--ol); border-radius: 999px;
+  transition: border-color .15s, box-shadow .15s; margin: 10px 16px 4px;
+}
+.sb:focus-within { border-color: var(--P); box-shadow: 0 0 0 3px var(--rip); }
+.sb input { flex: 1; border: none; background: transparent; padding: 10px 0; font-size: 15px; color: var(--t1); font-family: inherit; }
+.sb input:focus { outline: none; }
+.sb input::placeholder { color: var(--t3); }
+.sb .material-icons-round { color: var(--t3); font-size: 20px; }
+
+/* ── CARDS ───────────────────────────────────────────── */
+.card { background: var(--su); border-radius: 12px; box-shadow: var(--sh); overflow: hidden; }
+
+/* ── QUOTE CARDS ─────────────────────────────────────── */
+.qi {
+  background: var(--su); border-radius: 12px; padding: 14px 16px;
+  cursor: pointer; box-shadow: var(--sh); transition: transform .12s;
+  position: relative; overflow: hidden;
+}
+.qi:active { transform: scale(.99); }
+.qi.bulk-selected { box-shadow: 0 0 0 2px var(--P), var(--sh2); }
+.qi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+.qi-id  { font-size: 12px; font-weight: 700; color: var(--P); }
+.qi-amt { font-size: 18px; font-weight: 800; line-height: 1; color: var(--t1); }
+.qi-co  { font-size: 14px; font-weight: 600; margin: 2px 0; color: var(--t1); }
+.qi-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
+.qi-date { font-size: 12px; color: var(--t2); }
+.swipe-actions { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: stretch; }
+.swipe-actions button { width: 56px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; font-family: inherit; }
+.swipe-actions button:first-child { background: #4285F4; }
+.swipe-actions button:nth-child(2) { background: #888; }
+.swipe-actions button.del-btn { background: var(--E); border-radius: 0 12px 12px 0; }
+.swipe-actions .material-icons-round { font-size: 20px; }
+
+/* ── METRICS ─────────────────────────────────────────── */
+.met { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px; }
+.mc { background: var(--su); border-radius: 12px; padding: 14px; box-shadow: var(--sh); }
+.mv { font-size: 24px; font-weight: 800; line-height: 1; }
+.mlb { font-size: 12px; color: var(--t2); margin-top: 4px; }
+.mc.bl .mv { color: var(--P); }
+.mc.gr .mv { color: var(--S); }
+.mc.re .mv { color: var(--E); }
+.mc.or .mv { color: #E65100; }
+[data-theme=dark] .mc.or .mv { color: var(--W); }
+
+/* ── DETAIL BLOCKS ───────────────────────────────────── */
+.db2 { background: var(--su); border-radius: 12px; margin: 8px 16px; overflow: hidden; box-shadow: var(--sh); }
+.dh2 { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--su2); border-bottom: 1px solid var(--ol2); }
+.dht { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--t2); }
+.dr  { display: flex; align-items: flex-start; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--ol2); }
+.dr:last-child { border-bottom: none; }
+.dk  { font-size: 13px; color: var(--t2); min-width: 90px; flex-shrink: 0; }
+.dv  { font-size: 13px; font-weight: 500; color: var(--t1); text-align: right; flex: 1; word-break: break-word; }
+
+/* ── TOTALS ──────────────────────────────────────────── */
+.tots { background: var(--su); border-radius: 12px; margin: 8px 16px; padding: 14px 16px; box-shadow: var(--sh); }
+.tr2 { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+.tr2.grand { border-top: 2px solid var(--P); margin-top: 8px; padding-top: 10px; }
+.tr2.grand .tk { font-size: 16px; font-weight: 700; }
+.tr2.grand .tv { font-size: 16px; font-weight: 800; color: var(--P); }
+.tk { color: var(--t2); }
+.tv { font-weight: 600; color: var(--t1); }
+.st { font-size: 11px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--t2); padding: 13px 16px 5px; display: flex; align-items: center; justify-content: space-between; }
+
+/* ── SETTINGS ROWS ───────────────────────────────────── */
+.si { display: flex; align-items: center; gap: 13px; padding: 13px 16px; border-bottom: 1px solid var(--ol2); cursor: pointer; transition: background .12s; user-select: none; }
+.si:last-child { border-bottom: none; }
+.si:active { background: var(--su3); }
+.si-ic { width: 38px; height: 38px; border-radius: 50%; background: var(--PC); color: var(--P); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.si-ic .material-icons-round { font-size: 20px; }
+.si-ic.red { background: rgba(234,67,53,.12); color: var(--E); }
+.si-ic.grn { background: rgba(52,168,83,.12); color: var(--S); }
+.si-ic.ora { background: rgba(249,171,0,.15); color: #B06000; }
+[data-theme=dark] .si-ic.ora { color: var(--W); }
+.si-tx { flex: 1; min-width: 0; }
+.si-m  { font-size: 15px; font-weight: 500; }
+.si-s  { font-size: 12px; color: var(--t2); margin-top: 1px; }
+
+/* ── AVATARS ─────────────────────────────────────────── */
+.av { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; flex-shrink: 0; }
+
+/* ── INVENTORY ITEMS ─────────────────────────────────── */
+.ii { background: var(--su); border-radius: 12px; padding: 14px 16px; cursor: pointer; box-shadow: var(--sh); transition: box-shadow .15s; }
+.ii:active { box-shadow: var(--sh2); }
+
+/* ── TIER CHIPS ──────────────────────────────────────── */
+.tier-Platinum { background: #F3E8FF; color: #6B21A8; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.tier-Gold     { background: #FEF9C3; color: #854D0E; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.tier-Silver   { background: #F1F5F9; color: #334155; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.tier-Bronze   { background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+[data-theme=dark] .tier-Platinum { background: #2E1065; color: #D8B4FE; }
+[data-theme=dark] .tier-Gold     { background: #3F2A00; color: #FCD34D; }
+[data-theme=dark] .tier-Silver   { background: #1E293B; color: #94A3B8; }
+[data-theme=dark] .tier-Bronze   { background: #3F1A00; color: #FCA17C; }
+
+/* ── EMPTY STATES ────────────────────────────────────── */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 24px; gap: 10px; text-align: center; }
+.empty .material-icons-round { font-size: 52px; color: var(--ol); }
+.empty-t { font-size: 17px; font-weight: 600; color: var(--t2); }
+.empty-s { font-size: 13px; color: var(--t3); max-width: 220px; line-height: 1.5; }
+
+/* ── LINE ITEMS ──────────────────────────────────────── */
+.lir { background: var(--su2); border-radius: 8px; padding: 11px; margin-bottom: 8px; border: 1.5px solid var(--ol2); }
+.lir-top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+/* ── WIZARD STEPS ────────────────────────────────────── */
+.steps { display: flex; align-items: center; padding: 9px 16px; background: var(--su2); border-bottom: 1px solid var(--ol2); }
+.sd { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; background: var(--ol); color: var(--t2); transition: all .2s; }
+.sd.a { background: var(--P); color: #fff; }
+.sd.d { background: var(--S); color: #fff; }
+.sl { flex: 1; height: 2px; background: var(--ol); transition: background .2s; }
+.sl.d { background: var(--S); }
+
+/* ── PIPELINE BAR ────────────────────────────────────── */
+.pbar  { height: 6px; border-radius: 3px; background: var(--ol2); overflow: hidden; margin-top: 5px; }
+.pfill { height: 100%; border-radius: 3px; transition: width .5s ease; }
+
+/* ── PAYMENT METHOD CARD ─────────────────────────────── */
+.pmcard { background: var(--su2); border-radius: 8px; padding: 12px; border: 1.5px solid var(--ol2); margin-bottom: 8px; }
+.pmhead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pm-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--PC); color: var(--P); }
+
+/* ── SALESPERSON CARD ────────────────────────────────── */
+.spc { background: var(--su); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--sh); cursor: pointer; }
+.spc:active { background: var(--su2); }
+
+/* ── SNACKBAR ────────────────────────────────────────── */
+#snack {
+  position: fixed; left: 16px; right: 16px; bottom: calc(var(--nh) + 10px);
+  background: #303030; color: #fff; border-radius: 8px; padding: 12px 16px;
+  font-size: 14px; display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 9999;
+  transform: translateY(120%); opacity: 0; transition: all .3s ease; pointer-events: none;
+}
+#snack.show { transform: none; opacity: 1; pointer-events: auto; }
+#snack-act { color: #8AB4F8; font-weight: 700; cursor: pointer; margin-left: 8px; flex-shrink: 0; }
+
+/* ── BANNERS ─────────────────────────────────────────── */
+#update-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 9998; background: var(--S); color: #fff; padding: 10px 16px; display: none; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+#update-banner.show { display: flex; }
+#offline-dot { position: fixed; top: 10px; right: 56px; z-index: 9997; background: var(--E); color: #fff; border-radius: 999px; font-size: 10px; font-weight: 700; padding: 2px 8px; display: none; align-items: center; gap: 4px; }
+
+/* ── DIALOGS ─────────────────────────────────────────── */
+.bd { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: none; animation: bfi .18s; }
+.bd.open { display: flex; align-items: flex-end; }
+.bd.ctr  { align-items: center; justify-content: center; }
+.bd.ful  { align-items: stretch; }
+.sh { background: var(--su); width: 100%; border-radius: 16px 16px 0 0; max-height: 93dvh; overflow-y: auto; animation: shup .28s ease; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.sh.fh { border-radius: 0; max-height: 100dvh; height: 100dvh; overflow-y: auto; }
+.dh { display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--ol2); position: sticky; top: 0; background: var(--su); z-index: 10; }
+.dt { flex: 1; font-size: 17px; font-weight: 700; }
+.db { padding: 16px; }
+
+/* ── UTILITY ─────────────────────────────────────────── */
+.sp { height: 16px; }
+.sp-s { height: 8px; }
+.txt-p { color: var(--P); }
+.txt-e { color: var(--E); }
+.txt-m { color: var(--t2); font-size: 13px; }
+.fw7 { font-weight: 700; }
+.cdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+/* ── ALERT CARDS ─────────────────────────────────────── */
+.alert-card { background: var(--su); border-radius: 12px; padding: 12px 16px; border-left: 4px solid var(--W); box-shadow: var(--sh); cursor: pointer; }
+.alert-card.danger { border-left-color: var(--E); }
+.alert-card.info   { border-left-color: var(--P); }
+
+/* ── REVENUE CHART ───────────────────────────────────── */
+.chart-wrap { background: var(--su); border-radius: 12px; margin: 0 16px; padding: 14px 16px; box-shadow: var(--sh); overflow: hidden; }
+.chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; margin-top: 10px; }
+.chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 2px; transition: height .4s ease; background: var(--P); opacity: .7; }
+.chart-bar.active { opacity: 1; }
+.chart-bar-lbl { font-size: 9px; color: var(--t2); font-weight: 600; white-space: nowrap; }
+
+/* ── REVISION HISTORY ────────────────────────────────── */
+.rev-item { padding: 12px 16px; border-bottom: 1px solid var(--ol2); cursor: pointer; transition: background .1s; }
+.rev-item:last-child { border-bottom: none; }
+.rev-item:active { background: var(--su3); }
+.rev-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--P); flex-shrink: 0; margin-top: 5px; }
+.rev-item.current .rev-dot { background: var(--S); }
+
+/* ── TEMPLATE CARDS ──────────────────────────────────── */
+.tpl-card { background: var(--su); border-radius: 12px; padding: 14px 16px; box-shadow: var(--sh); cursor: pointer; transition: transform .12s; }
+.tpl-card:active { transform: scale(.99); }
+
+/* ── FOLLOW-UP BADGE ─────────────────────────────────── */
+.fu-badge { display: inline-flex; align-items: center; gap: 4px; background: #FFF3E0; color: #B06000; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 2px 8px; }
+[data-theme=dark] .fu-badge { background: #3A2000; color: var(--W); }
+
+/* ── PREVIEW ─────────────────────────────────────────── */
+.prev-outer { background: #C8C8C8; min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: 16px 0 40px; gap: 16px; overflow-x: hidden; overflow-y: auto; }
+[data-theme=dark] .prev-outer { background: #1A1A1A; }
+.prev-iframe-wrap { box-shadow: 0 2px 16px rgba(0,0,0,.3); background: #fff; }
+.prev-iframe-wrap iframe { border: none; display: block; }
+
+/* ── AUTOCOMPLETE ────────────────────────────────────── */
+.ac-input { padding-right: 36px !important; }
+.ac-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--su); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.12); border: 1.5px solid var(--ol); z-index: 999; overflow: hidden; max-height: 280px; overflow-y: auto; animation: dropIn .15s ease; }
+.ac-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--ol2); transition: background .1s; }
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.ac-active { background: var(--PC); }
+.ac-custom { opacity: .75; }
+.ac-custom:hover { opacity: 1; }
+.ac-dropdown::-webkit-scrollbar { width: 4px; }
+.ac-dropdown::-webkit-scrollbar-thumb { background: var(--ol); border-radius: 2px; }
+
+/* ── ONBOARDING ──────────────────────────────────────── */
+#d-onboarding { padding: 0 16px 8px; display: none; }
+.ob-card { background: var(--su); border-radius: 12px; padding: 14px 16px; box-shadow: var(--sh); }
+.ob-step { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; border-bottom: 1px solid var(--ol2); }
+.ob-step:last-child { border-bottom: none; }
+.ob-step.done { cursor: default; }
+.ob-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--PC); color: var(--P); }
+.ob-step.done .ob-icon { background: #E6F4EA; color: var(--S); }
+
+/* ── WIN ANIMATION ───────────────────────────────────── */
+#win-anim { position: fixed; inset: 0; z-index: 10000; pointer-events: none; display: none; }
+.confetti-piece { position: absolute; top: 0; animation: confettiFall 1.4s ease-in forwards; font-size: 24px; }
+
+/* ── LIVE TOTALS BAR ─────────────────────────────────── */
+#qe-live-wrap {
+  position: sticky; bottom: 0; background: var(--su);
+  border-top: 1px solid var(--ol2); padding: 10px 16px;
+  display: none; align-items: center; justify-content: space-between;
+  gap: 8px; z-index: 10; box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+}
+#qe-live-tots { display: flex; align-items: center; gap: 12px; flex: 1; flex-wrap: wrap; }
+
+/* ── STICKY QUOTE DETAIL ACTIONS ─────────────────────── */
+#qd-actions-wrap {
+  position: sticky; bottom: 0; background: var(--su);
+  border-top: 1px solid var(--ol2); padding: 10px 16px;
+  display: flex; gap: 8px; z-index: 10;
+  box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+}
+
+/* ── BULK ACTION BAR ─────────────────────────────────── */
+#bulk-bar { position: sticky; top: var(--bh); z-index: 59; background: var(--P); color: #fff; padding: 10px 16px; display: none; align-items: center; gap: 10px; }
+#bulk-count { flex: 1; font-size: 13px; font-weight: 700; }
+
+/* ── DASHBOARD COLLAPSIBLE ───────────────────────────── */
+.dash-sec-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; cursor: pointer; user-select: none; }
+.dash-sec-hdr:active { background: var(--su2); }
+
+/* ── CUSTOM COLOUR PICKER ────────────────────────────── */
+#color-picker-overlay { animation: bfi .18s; }
+#color-picker-panel { animation: shup .25s cubic-bezier(.2,0,0,1); }
+#color-picker-panel input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; border-radius: 2px;
+  outline: none; border: none; background: var(--ol); cursor: pointer;
+}
+#color-picker-panel input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px;
+  border-radius: 50%; cursor: pointer;
+  border: 2.5px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+#color-picker-panel input[type=range]::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  cursor: pointer; border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+[id^="cp-swatch-"] { transition: transform .12s, border-color .12s; }
+[id^="cp-swatch-"]:hover  { transform: scale(1.1); }
+[id^="cp-swatch-"]:active { transform: scale(.88); }
+
+/* ── RESPONSIVE ──────────────────────────────────────── */
+@media (min-width: 600px) {
+  .met { grid-template-columns: repeat(4, 1fr); }
+  .bd:not(.ful):not(.ctr) .sh { max-width: 520px; margin: auto; border-radius: 16px; }
+  .bd:not(.ful):not(.ctr) { align-items: center; }
+}
 </style>
 </head>
 <body>
 <div id="app">
 
-<div id="update-banner"><span class="material-icons-round" style="font-size:18px">system_update</span><span style="flex:1">New version available</span><button class="btn bp btn-sm" onclick="location.reload()">Update</button><button class="ib" style="color:#fff;width:32px;height:32px" onclick="this.parentElement.classList.remove('show')"><span class="material-icons-round" style="font-size:18px">close</span></button></div>
+<!-- UPDATE BANNER -->
+<div id="update-banner">
+  <span class="material-icons-round" style="font-size:18px">system_update</span>
+  <span style="flex:1">New version available</span>
+  <button class="btn bp btn-sm" onclick="location.reload()">Update</button>
+  <button class="ib" style="color:#fff;width:32px;height:32px" onclick="this.parentElement.classList.remove('show')">
+    <span class="material-icons-round" style="font-size:18px">close</span>
+  </button>
+</div>
 <div id="offline-dot"><span class="material-icons-round" style="font-size:12px">wifi_off</span>Offline</div>
 <div id="win-anim"></div>
 
+<!-- TOP BAR -->
 <div id="topbar">
   <span id="tbar-title">Quotes</span>
   <div style="display:flex;gap:2px">
@@ -193,12 +542,16 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
   </div>
 </div>
 
+<!-- CONTENT -->
 <div id="content">
 
   <!-- DASHBOARD -->
   <div class="page on" id="page-dashboard">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 2px">
-      <div><div style="font-size:12px;color:var(--t2)">Welcome back</div><div id="d-coname" style="font-size:20px;font-weight:800;margin-top:1px">—</div></div>
+      <div>
+        <div style="font-size:12px;color:var(--t2)">Welcome back</div>
+        <div id="d-coname" style="font-size:20px;font-weight:800;margin-top:1px">—</div>
+      </div>
       <button class="btn bp btn-sm" onclick="openQE(null)"><span class="material-icons-round">add</span> New Quote</button>
     </div>
     <div class="met" id="d-met"></div>
@@ -206,15 +559,24 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
     <div id="d-onboarding"></div>
     <div id="d-alerts" style="padding:0 16px;display:flex;flex-direction:column;gap:8px"></div>
     <div id="d-chart-sec">
-      <div class="dash-sec-hdr" onclick="toggleDashSection('chart')"><span class="st" style="padding:0;font-size:11px">Revenue (6 Months)</span><span class="material-icons-round" style="font-size:18px;color:var(--t3)">expand_less</span></div>
+      <div class="dash-sec-hdr" onclick="toggleDashSection('chart')">
+        <span class="st" style="padding:0;font-size:11px">Revenue (6 Months)</span>
+        <span class="material-icons-round" style="font-size:18px;color:var(--t3)">expand_less</span>
+      </div>
       <div class="chart-wrap"><div class="chart-bars" id="d-chart"></div></div>
     </div>
     <div id="d-pipe-sec">
-      <div class="dash-sec-hdr" onclick="toggleDashSection('pipeline')"><span class="st" style="padding:0;font-size:11px">Pipeline</span><span class="material-icons-round" style="font-size:18px;color:var(--t3)">expand_less</span></div>
+      <div class="dash-sec-hdr" onclick="toggleDashSection('pipeline')">
+        <span class="st" style="padding:0;font-size:11px">Pipeline</span>
+        <span class="material-icons-round" style="font-size:18px;color:var(--t3)">expand_less</span>
+      </div>
       <div style="padding:0 16px 10px" id="d-pipe"></div>
     </div>
     <div id="d-rec-sec">
-      <div class="dash-sec-hdr" onclick="toggleDashSection('recent')"><span class="st" style="padding:0;font-size:11px">Recent Quotes</span><span class="material-icons-round" style="font-size:18px;color:var(--t3)">expand_less</span></div>
+      <div class="dash-sec-hdr" onclick="toggleDashSection('recent')">
+        <span class="st" style="padding:0;font-size:11px">Recent Quotes</span>
+        <span class="material-icons-round" style="font-size:18px;color:var(--t3)">expand_less</span>
+      </div>
       <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px" id="d-rec"></div>
     </div>
     <div class="sp"></div>
@@ -225,29 +587,42 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
       <div style="font-size:18px;font-weight:800">Quotes</div>
       <div style="display:flex;gap:6px">
-        <button class="btn bo btn-sm" onclick="toggleBulkMode()" id="btn-bulk"><span class="material-icons-round">checklist</span></button>
+        <button class="btn bo btn-sm" onclick="toggleBulkMode()" id="btn-bulk" title="Bulk select"><span class="material-icons-round">checklist</span></button>
         <button class="btn bo btn-sm" onclick="openEstimator()" title="Quick Estimator"><span class="material-icons-round">calculate</span></button>
-        <button class="btn bo btn-sm" onclick="openTemplates()"><span class="material-icons-round">bookmark</span></button>
+        <button class="btn bo btn-sm" onclick="openTemplates()" title="Templates"><span class="material-icons-round">bookmark</span></button>
         <button class="btn bp btn-sm" onclick="openQE(null)"><span class="material-icons-round">add</span> New</button>
       </div>
     </div>
-    <!-- Bulk action bar -->
+    <!-- Bulk bar -->
     <div id="bulk-bar">
       <span id="bulk-count">0 selected</span>
       <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="bulkSetStatus('Sent')">Mark Sent</button>
       <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="bulkSetStatus('Won')">Mark Won</button>
       <button class="btn btn-sm" style="background:rgba(234,67,53,.4);color:#fff" onclick="bulkDelete()">Delete</button>
-      <button class="ib" style="color:#fff;width:32px;height:32px" onclick="toggleBulkMode()"><span class="material-icons-round" style="font-size:18px">close</span></button>
+      <button class="ib" style="color:#fff;width:32px;height:32px" onclick="toggleBulkMode()">
+        <span class="material-icons-round" style="font-size:18px">close</span>
+      </button>
     </div>
-    <div id="q-srch-wrap" style="display:none"><div class="sb" style="margin-top:10px"><span class="material-icons-round">search</span><input id="q-srch-in" placeholder="Search quotes, customers…" autocomplete="off" oninput="renderQuotes()"><button class="ib" style="width:32px;height:32px" onclick="closeSearch()"><span class="material-icons-round" style="font-size:18px">close</span></button></div></div>
+    <!-- Search -->
+    <div id="q-srch-wrap" style="display:none">
+      <div class="sb" style="margin-top:10px">
+        <span class="material-icons-round">search</span>
+        <input id="q-srch-in" placeholder="Search quotes, customers, items…" autocomplete="off" oninput="renderQuotes()">
+        <button class="ib" style="width:32px;height:32px" onclick="closeSearch()"><span class="material-icons-round" style="font-size:18px">close</span></button>
+      </div>
+    </div>
+    <!-- Date range -->
     <div style="padding:6px 16px 0;display:flex;gap:8px;align-items:center">
       <input type="date" class="fi" id="q-date-from" style="flex:1;font-size:12px;height:34px;padding:6px 10px" onchange="renderQuotes()">
       <span style="color:var(--t3);font-size:12px">→</span>
-      <input type="date" class="fi" id="q-date-to" style="flex:1;font-size:12px;height:34px;padding:6px 10px" onchange="renderQuotes()">
-      <button class="ib" style="width:32px;height:32px" onclick="clearDateFilter()"><span class="material-icons-round" style="font-size:16px">filter_alt_off</span></button>
+      <input type="date" class="fi" id="q-date-to"   style="flex:1;font-size:12px;height:34px;padding:6px 10px" onchange="renderQuotes()">
+      <button class="ib" style="width:32px;height:32px" onclick="clearDateFilter()" title="Clear dates">
+        <span class="material-icons-round" style="font-size:16px">filter_alt_off</span>
+      </button>
     </div>
+    <!-- Status filters -->
     <div class="fbar" id="q-fbar">
-      <button class="fc on" onclick="setQF('all')">All</button>
+      <button class="fc on"  onclick="setQF('all')">All</button>
       <button class="fc" onclick="setQF('Draft')">Draft</button>
       <button class="fc" onclick="setQF('Sent')">Sent</button>
       <button class="fc" onclick="setQF('Won')">Won</button>
@@ -263,7 +638,8 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
       <div style="font-size:18px;font-weight:800">Products</div>
       <div style="display:flex;gap:6px">
-        <button class="btn bo btn-sm" onclick="openImportSheet()"><span class="material-icons-round">upload_file</span></button>
+        <button class="btn bo btn-sm" onclick="openImportSheet()" title="Import CSV"><span class="material-icons-round">upload_file</span></button>
+        <button class="btn bo btn-sm" onclick="openBundleManager()" title="Bundles"><span class="material-icons-round">inventory_2</span></button>
         <button class="btn bp btn-sm" onclick="openInvEd(null)"><span class="material-icons-round">add</span> Add</button>
       </div>
     </div>
@@ -277,7 +653,7 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
       <div style="font-size:18px;font-weight:800">Clients</div>
       <div style="display:flex;gap:6px">
-        <button class="btn bo btn-sm" onclick="openImportSheet()"><span class="material-icons-round">upload_file</span></button>
+        <button class="btn bo btn-sm" onclick="openImportSheet()" title="Import CSV"><span class="material-icons-round">upload_file</span></button>
         <button class="btn bp btn-sm" onclick="openCustEd(null)"><span class="material-icons-round">add</span> Add</button>
       </div>
     </div>
@@ -288,88 +664,374 @@ textarea.fi{resize:vertical;min-height:74px;line-height:1.5}.fr{display:grid;gri
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div style="padding:16px 16px 6px"><div style="font-size:22px;font-weight:800">Settings</div></div>
-    <div class="sb" style="margin-bottom:4px"><span class="material-icons-round">search</span><input placeholder="Search settings…" autocomplete="off" oninput="filterSettings(this.value)"></div>
+    <div style="padding:16px 16px 6px">
+      <div style="font-size:22px;font-weight:800">Settings</div>
+      <div style="font-size:13px;color:var(--t2);margin-top:2px">Manage your workspace</div>
+    </div>
+    <div class="sb" style="margin-bottom:4px">
+      <span class="material-icons-round">search</span>
+      <input placeholder="Search settings…" autocomplete="off" oninput="filterSettings(this.value)">
+    </div>
     <div class="st">Company Profiles</div>
     <div style="margin:0 16px" class="card" id="co-list-el"></div>
-    <div style="padding:10px 16px"><button class="btn bo btn-w" onclick="openCoEd(null)"><span class="material-icons-round">add_business</span> Add Company Profile</button></div>
+    <div style="padding:10px 16px">
+      <button class="btn bo btn-w" onclick="openCoEd(null)">
+        <span class="material-icons-round">add_business</span> Add Company Profile
+      </button>
+    </div>
     <div class="st">Appearance</div>
     <div style="margin:0 16px" class="card">
-      <div class="si" onclick="toggleTheme()"><div class="si-ic"><span class="material-icons-round">dark_mode</span></div><div class="si-tx"><div class="si-m">Dark Mode</div></div><button class="tog" id="dark-tog" onclick="event.stopPropagation();toggleTheme()"></button></div>
-      <div class="si" onclick="openAccentPicker()"><div class="si-ic"><span class="material-icons-round">palette</span></div><div class="si-tx"><div class="si-m">Accent Color</div><div class="si-s" id="acc-sub">Google Blue</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="toggleTheme()">
+        <div class="si-ic"><span class="material-icons-round">dark_mode</span></div>
+        <div class="si-tx"><div class="si-m">Dark Mode</div><div class="si-s">Toggle light / dark theme</div></div>
+        <button class="tog" id="dark-tog" onclick="event.stopPropagation();toggleTheme()"></button>
+      </div>
+      <div class="si" onclick="openAccentPicker()">
+        <div class="si-ic"><span class="material-icons-round">palette</span></div>
+        <div class="si-tx"><div class="si-m">Accent Colour</div><div class="si-s" id="acc-sub">Google Blue</div></div>
+        <span class="material-icons-round" style="color:var(--t2)">chevron_right</span>
+      </div>
     </div>
     <div class="st">Quote Configuration</div>
     <div style="margin:0 16px" class="card">
       <div class="si" onclick="openSetSheet('quote')"><div class="si-ic"><span class="material-icons-round">receipt_long</span></div><div class="si-tx"><div class="si-m">Quote Defaults</div><div class="si-s">Prefix, validity, tax, currency</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
-      <div class="si" onclick="openSetSheet('margin')"><div class="si-ic"><span class="material-icons-round">show_chart</span></div><div class="si-tx"><div class="si-m">Margin Thresholds</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openSetSheet('margin')"><div class="si-ic"><span class="material-icons-round">show_chart</span></div><div class="si-tx"><div class="si-m">Margin Thresholds</div><div class="si-s">Min and warning margins</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
       <div class="si" onclick="openSetSheet('categories')"><div class="si-ic"><span class="material-icons-round">category</span></div><div class="si-tx"><div class="si-m">Product Categories</div><div class="si-s" id="cat-sub"></div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
-      <div class="si" onclick="openSetSheet('download')"><div class="si-ic"><span class="material-icons-round">folder_open</span></div><div class="si-tx"><div class="si-m">Download Settings</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
-      <div class="si" onclick="openSetSheet('dashboard')"><div class="si-ic"><span class="material-icons-round">dashboard_customize</span></div><div class="si-tx"><div class="si-m">Dashboard Sections</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openSetSheet('download')"><div class="si-ic"><span class="material-icons-round">folder_open</span></div><div class="si-tx"><div class="si-m">Download Settings</div><div class="si-s">File naming preferences</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openSetSheet('dashboard')"><div class="si-ic"><span class="material-icons-round">dashboard_customize</span></div><div class="si-tx"><div class="si-m">Dashboard Sections</div><div class="si-s">Show / hide sections</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
     </div>
     <div class="st">Advanced</div>
     <div style="margin:0 16px" class="card" id="settings-extra-card"></div>
     <div class="st">Sales Team</div>
-    <div style="margin:0 16px" class="card"><div class="si" onclick="openSalesTeam()"><div class="si-ic"><span class="material-icons-round">badge</span></div><div class="si-tx"><div class="si-m">Manage Sales Team</div><div class="si-s" id="sp-sub">0 members</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div></div>
-    <div class="st">Analytics</div>
-    <div style="margin:0 16px" class="card"><div class="si" onclick="openAnalytics()"><div class="si-ic"><span class="material-icons-round">analytics</span></div><div class="si-tx"><div class="si-m">Sales Analytics</div><div class="si-s">Performance · Products · Customers</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div></div>
-    <div class="st">Data</div>
     <div style="margin:0 16px" class="card">
-      <div class="si" onclick="openExportSheet()"><div class="si-ic"><span class="material-icons-round">download</span></div><div class="si-tx"><div class="si-m">Export Data</div><div class="si-s">CSV or JSON backup</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
-      <div class="si" onclick="openImportSheet()"><div class="si-ic"><span class="material-icons-round">upload</span></div><div class="si-tx"><div class="si-m">Import from CSV</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
-      <div class="si" onclick="confirmAct('Delete ALL data permanently?',clearAllData)"><div class="si-ic red"><span class="material-icons-round">delete_forever</span></div><div class="si-tx"><div class="si-m txt-e">Clear All Data</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openSalesTeam()">
+        <div class="si-ic"><span class="material-icons-round">badge</span></div>
+        <div class="si-tx"><div class="si-m">Manage Sales Team</div><div class="si-s" id="sp-sub">0 members</div></div>
+        <span class="material-icons-round" style="color:var(--t2)">chevron_right</span>
+      </div>
+    </div>
+    <div class="st">Analytics</div>
+    <div style="margin:0 16px" class="card">
+      <div class="si" onclick="openAnalytics()">
+        <div class="si-ic"><span class="material-icons-round">analytics</span></div>
+        <div class="si-tx"><div class="si-m">Sales Analytics</div><div class="si-s">Performance · Products · Customers</div></div>
+        <span class="material-icons-round" style="color:var(--t2)">chevron_right</span>
+      </div>
+    </div>
+    <div class="st">Data Management</div>
+    <div style="margin:0 16px" class="card">
+      <div class="si" onclick="openExportSheet()"><div class="si-ic"><span class="material-icons-round">download</span></div><div class="si-tx"><div class="si-m">Export Data</div><div class="si-s">CSV or full JSON backup</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="openImportSheet()"><div class="si-ic"><span class="material-icons-round">upload</span></div><div class="si-tx"><div class="si-m">Import from CSV</div><div class="si-s">Products or customers</div></div><span class="material-icons-round" style="color:var(--t2)">chevron_right</span></div>
+      <div class="si" onclick="confirmAct('Delete ALL data permanently? This cannot be undone.',clearAllData)">
+        <div class="si-ic red"><span class="material-icons-round">delete_forever</span></div>
+        <div class="si-tx"><div class="si-m txt-e">Clear All Data</div><div class="si-s">Cannot be undone</div></div>
+        <span class="material-icons-round" style="color:var(--t2)">chevron_right</span>
+      </div>
     </div>
     <div class="st">About</div>
-    <div style="margin:0 16px" class="card"><div class="si"><div class="si-ic"><span class="material-icons-round">info</span></div><div class="si-tx"><div class="si-m">Quotes PWA v5.0</div><div class="si-s">All features active · Fully offline</div></div></div></div>
+    <div style="margin:0 16px" class="card">
+      <div class="si">
+        <div class="si-ic"><span class="material-icons-round">info</span></div>
+        <div class="si-tx"><div class="si-m">Quotes PWA v6.0</div><div class="si-s">All features active · Fully offline · Made for Kenya</div></div>
+      </div>
+    </div>
     <div class="sp"></div><div class="sp"></div>
   </div>
 
 </div><!-- /content -->
 
+<!-- BOTTOM NAV -->
 <div id="nav">
-  <button class="nv on" data-p="dashboard" onclick="go('dashboard')"><div class="nv-ind"><span class="material-icons-round">dashboard</span></div><span class="nv-lbl">Dashboard</span></button>
-  <button class="nv" data-p="quotes" onclick="go('quotes')"><div class="nv-ind"><span class="material-icons-round">receipt_long</span><span class="nav-badge" id="nav-badge-quotes" style="display:none"></span></div><span class="nv-lbl">Quotes</span></button>
-  <button class="nv" data-p="inventory" onclick="go('inventory')"><div class="nv-ind"><span class="material-icons-round">inventory_2</span></div><span class="nv-lbl">Products</span></button>
-  <button class="nv" data-p="customers" onclick="go('customers')"><div class="nv-ind"><span class="material-icons-round">people</span></div><span class="nv-lbl">Clients</span></button>
-  <button class="nv" data-p="settings" onclick="go('settings')"><div class="nv-ind"><span class="material-icons-round">settings</span></div><span class="nv-lbl">Settings</span></button>
+  <button class="nv on" data-p="dashboard" onclick="go('dashboard')">
+    <div class="nv-ind"><span class="material-icons-round">dashboard</span></div>
+    <span class="nv-lbl">Dashboard</span>
+  </button>
+  <button class="nv" data-p="quotes" onclick="go('quotes')">
+    <div class="nv-ind">
+      <span class="material-icons-round">receipt_long</span>
+      <span class="nav-badge" id="nav-badge-quotes" style="display:none"></span>
+    </div>
+    <span class="nv-lbl">Quotes</span>
+  </button>
+  <button class="nv" data-p="inventory" onclick="go('inventory')">
+    <div class="nv-ind"><span class="material-icons-round">inventory_2</span></div>
+    <span class="nv-lbl">Products</span>
+  </button>
+  <button class="nv" data-p="customers" onclick="go('customers')">
+    <div class="nv-ind"><span class="material-icons-round">people</span></div>
+    <span class="nv-lbl">Clients</span>
+  </button>
+  <button class="nv" data-p="settings" onclick="go('settings')">
+    <div class="nv-ind"><span class="material-icons-round">settings</span></div>
+    <span class="nv-lbl">Settings</span>
+  </button>
 </div>
 </div><!-- /app -->
 
-<button id="fab" onclick="fabClick()"><span class="material-icons-round">add</span><span id="fab-lbl">New Quote</span></button>
+<!-- FAB -->
+<button id="fab" onclick="fabClick()">
+  <span class="material-icons-round">add</span>
+  <span id="fab-lbl">New Quote</span>
+</button>
+
+<!-- SNACKBAR -->
 <div id="snack"><span id="snack-msg"></span><span id="snack-act"></span></div>
 
-<!-- ═══ DIALOGS ═══ -->
-<div class="bd ful" id="dlg-qe"><div class="sh fh" style="display:flex;flex-direction:column"><div class="dh"><button class="ib" onclick="closeDlg('dlg-qe')"><span class="material-icons-round">close</span></button><span class="dt" id="qe-ttl">New Quote</span><button class="btn bp btn-sm" onclick="qeSave()">Save</button></div><div class="steps"><div class="sd a" id="sd0">1</div><div class="sl" id="sl0"></div><div class="sd" id="sd1">2</div><div class="sl" id="sl1"></div><div class="sd" id="sd2">3</div><div class="sl" id="sl2"></div><div class="sd" id="sd3">4</div></div><div style="flex:1;overflow-y:auto;padding:16px" id="qe-body"></div><div id="qe-live-wrap"><div id="qe-live-tots"></div></div><div style="padding:10px 16px;border-top:1px solid var(--ol2);display:flex;gap:8px;background:var(--su)"><button class="btn bt" id="qe-bk" style="display:none" onclick="qeBack()">← Back</button><button class="btn bp" style="flex:1" id="qe-nx" onclick="qeNext()">Next →</button></div></div></div>
+<!-- ═══════════════════════════════════════
+     DIALOGS
+════════════════════════════════════════ -->
 
-<div class="bd ful" id="dlg-qd"><div class="sh fh" style="display:flex;flex-direction:column"><div class="dh"><button class="ib" onclick="closeDlg('dlg-qd')"><span class="material-icons-round">arrow_back</span></button><span class="dt" id="qd-id">Quote</span><button class="ib" onclick="openQAct()"><span class="material-icons-round">more_vert</span></button></div><div style="flex:1;overflow-y:auto" id="qd-body"></div><div id="qd-actions-wrap"><div id="qd-actions" style="display:flex;gap:8px;width:100%"></div></div></div></div>
+<!-- Quote Editor -->
+<div class="bd ful" id="dlg-qe">
+  <div class="sh fh" style="display:flex;flex-direction:column">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-qe')"><span class="material-icons-round">close</span></button>
+      <span class="dt" id="qe-ttl">New Quote</span>
+      <button class="btn bp btn-sm" onclick="qeSave()">Save</button>
+    </div>
+    <div class="steps">
+      <div class="sd a" id="sd0">1</div><div class="sl" id="sl0"></div>
+      <div class="sd"   id="sd1">2</div><div class="sl" id="sl1"></div>
+      <div class="sd"   id="sd2">3</div><div class="sl" id="sl2"></div>
+      <div class="sd"   id="sd3">4</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px" id="qe-body"></div>
+    <div id="qe-live-wrap">
+      <div id="qe-live-tots"></div>
+    </div>
+    <div style="padding:10px 16px;border-top:1px solid var(--ol2);display:flex;gap:8px;background:var(--su)">
+      <button class="btn bt" id="qe-bk" style="display:none" onclick="qeBack()">← Back</button>
+      <button class="btn bp" style="flex:1" id="qe-nx" onclick="qeNext()">Next →</button>
+    </div>
+  </div>
+</div>
 
-<div class="bd" id="dlg-qact"><div class="sh"><div style="padding:12px 16px 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Actions</div><div id="qact-body"></div><div class="sp-s"></div></div></div>
-<div class="bd ful" id="dlg-co"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-co')"><span class="material-icons-round">close</span></button><span class="dt" id="co-ttl">Company</span><button class="btn bp btn-sm" onclick="saveCo()">Save</button></div><div class="db" id="co-body"></div></div></div>
-<div class="bd" id="dlg-inv"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-inv')"><span class="material-icons-round">close</span></button><span class="dt" id="inv-ttl">Product</span><button class="btn bp btn-sm" onclick="saveInv()">Save</button></div><div class="db" id="inv-body"></div></div></div>
-<div class="bd" id="dlg-cust"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-cust')"><span class="material-icons-round">close</span></button><span class="dt" id="cust-ttl">Customer</span><button class="btn bp btn-sm" onclick="saveCust()">Save</button></div><div class="db" id="cust-body"></div></div></div>
-<div class="bd" id="dlg-set"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-set')"><span class="material-icons-round">close</span></button><span class="dt" id="set-ttl">Settings</span><button class="btn bp btn-sm" onclick="saveSetSheet()">Save</button></div><div class="db" id="set-body"></div></div></div>
-<div class="bd ful" id="dlg-sp"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-sp')"><span class="material-icons-round">close</span></button><span class="dt">Sales Team</span><button class="btn bp btn-sm" onclick="openSpEd(null)"><span class="material-icons-round">add</span> Add</button></div><div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px" id="sp-list"></div></div></div>
-<div class="bd" id="dlg-spe"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-spe')"><span class="material-icons-round">close</span></button><span class="dt" id="spe-ttl">Salesperson</span><button class="btn bp btn-sm" onclick="saveSp()">Save</button></div><div class="db" id="spe-body"></div></div></div>
-<div class="bd" id="dlg-acc"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-acc')"><span class="material-icons-round">close</span></button><span class="dt">Accent Color</span></div><div class="db" id="acc-body"></div></div></div>
-<div class="bd ful" id="dlg-prev"><div class="sh fh" style="display:flex;flex-direction:column"><div class="dh"><button class="ib" onclick="closeDlg('dlg-prev')"><span class="material-icons-round">close</span></button><span class="dt">Preview <span id="prev-page-count" style="font-size:12px;font-weight:400;color:var(--t2)"></span></span><div style="display:flex;gap:6px"><button class="ib" onclick="togglePDFDarkMode()" title="Toggle dark PDF"><span class="material-icons-round">dark_mode</span></button><button class="btn bo btn-sm" onclick="printQuote()"><span class="material-icons-round">print</span></button><button class="btn bp btn-sm" onclick="doPDF()"><span class="material-icons-round">download</span> PDF</button></div></div><div style="flex:1;overflow-y:auto"><div class="prev-outer" id="prev-outer"></div></div></div></div>
-<div class="bd ful" id="dlg-rev"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-rev')"><span class="material-icons-round">close</span></button><span class="dt">History</span></div><div id="rev-body"></div></div></div>
-<div class="bd ful" id="dlg-tpl"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-tpl')"><span class="material-icons-round">close</span></button><span class="dt">Templates</span></div><div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px" id="tpl-body"></div></div></div>
-<div class="bd ful" id="dlg-analytics"><div class="sh fh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-analytics')"><span class="material-icons-round">close</span></button><span class="dt">Sales Analytics</span></div><div id="analytics-body" style="padding-bottom:24px"></div></div></div>
-<div class="bd ctr" id="dlg-cfm"><div class="sh" style="border-radius:16px;max-width:340px"><div class="dh"><span class="dt" id="cfm-ttl">Confirm</span></div><div style="padding:4px 16px 14px;font-size:14px;color:var(--t2);line-height:1.5" id="cfm-msg"></div><div style="padding:0 16px 16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn bt" onclick="closeDlg('dlg-cfm')">Cancel</button><button class="btn bd2" id="cfm-ok">Confirm</button></div></div></div>
-<div class="bd" id="dlg-more"><div class="sh"><div id="more-body"></div><div class="sp-s"></div></div></div>
-<div class="bd" id="dlg-share"><div class="sh"><div class="dh"><button class="ib" onclick="closeDlg('dlg-share')"><span class="material-icons-round">close</span></button><span class="dt">Share</span></div><div style="padding:8px 16px 0;font-size:13px;color:var(--t2)" id="share-quote-label">—</div><div id="share-body" style="padding:8px 0"></div><div style="padding:10px 16px 16px"><button class="btn bp btn-w" onclick="doGeneratePDFAndShare()"><span class="material-icons-round">picture_as_pdf</span> Generate &amp; Share PDF</button></div><div id="share-progress" style="display:none;padding:0 16px 16px;text-align:center"><div style="width:32px;height:32px;border-radius:50%;border:3px solid var(--ol);border-top-color:var(--P);animation:spin .8s linear infinite;margin:0 auto 10px"></div><div style="font-size:13px;color:var(--t2)" id="share-progress-msg">Generating…</div></div><div class="sp-s"></div></div></div>
+<!-- Quote Detail -->
+<div class="bd ful" id="dlg-qd">
+  <div class="sh fh" style="display:flex;flex-direction:column">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-qd')"><span class="material-icons-round">arrow_back</span></button>
+      <span class="dt" id="qd-id">Quote</span>
+      <button class="ib" onclick="openQAct()"><span class="material-icons-round">more_vert</span></button>
+    </div>
+    <div style="flex:1;overflow-y:auto" id="qd-body"></div>
+    <div id="qd-actions-wrap">
+      <div id="qd-actions" style="display:flex;gap:8px;width:100%"></div>
+    </div>
+  </div>
+</div>
 
-<div id="cs-sheet" onclick="csClose()"><div id="cs-inner" onclick="event.stopPropagation()"><div id="cs-header"><span id="cs-title">Select</span><button class="ib" onclick="csClose()"><span class="material-icons-round">close</span></button></div><div id="cs-search-wrap" style="display:none"><input id="cs-search" placeholder="Search…" autocomplete="off" oninput="csFilter(this.value)"></div><div id="cs-list"></div></div></div>
+<!-- Quote Actions -->
+<div class="bd" id="dlg-qact">
+  <div class="sh">
+    <div style="padding:12px 16px 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Quote Actions</div>
+    <div id="qact-body"></div>
+    <div class="sp-s"></div>
+  </div>
+</div>
 
+<!-- Company Editor -->
+<div class="bd ful" id="dlg-co">
+  <div class="sh fh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-co')"><span class="material-icons-round">close</span></button>
+      <span class="dt" id="co-ttl">Company Profile</span>
+      <button class="btn bp btn-sm" onclick="saveCo()">Save</button>
+    </div>
+    <div class="db" id="co-body"></div>
+  </div>
+</div>
+
+<!-- Product Editor -->
+<div class="bd" id="dlg-inv">
+  <div class="sh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-inv')"><span class="material-icons-round">close</span></button>
+      <span class="dt" id="inv-ttl">Product</span>
+      <button class="btn bp btn-sm" onclick="saveInv()">Save</button>
+    </div>
+    <div class="db" id="inv-body"></div>
+  </div>
+</div>
+
+<!-- Customer Editor -->
+<div class="bd" id="dlg-cust">
+  <div class="sh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-cust')"><span class="material-icons-round">close</span></button>
+      <span class="dt" id="cust-ttl">Customer</span>
+      <button class="btn bp btn-sm" onclick="saveCust()">Save</button>
+    </div>
+    <div class="db" id="cust-body"></div>
+  </div>
+</div>
+
+<!-- Settings Sheet -->
+<div class="bd" id="dlg-set">
+  <div class="sh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-set')"><span class="material-icons-round">close</span></button>
+      <span class="dt" id="set-ttl">Settings</span>
+      <button class="btn bp btn-sm" onclick="saveSetSheet()">Save</button>
+    </div>
+    <div class="db" id="set-body"></div>
+  </div>
+</div>
+
+<!-- Sales Team List -->
+<div class="bd ful" id="dlg-sp">
+  <div class="sh fh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-sp')"><span class="material-icons-round">close</span></button>
+      <span class="dt">Sales Team</span>
+      <button class="btn bp btn-sm" onclick="openSpEd(null)"><span class="material-icons-round">add</span> Add</button>
+    </div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px" id="sp-list"></div>
+  </div>
+</div>
+
+<!-- Salesperson Editor -->
+<div class="bd" id="dlg-spe">
+  <div class="sh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-spe')"><span class="material-icons-round">close</span></button>
+      <span class="dt" id="spe-ttl">Salesperson</span>
+      <button class="btn bp btn-sm" onclick="saveSp()">Save</button>
+    </div>
+    <div class="db" id="spe-body"></div>
+  </div>
+</div>
+
+<!-- Accent Colour Picker -->
+<div class="bd" id="dlg-acc">
+  <div class="sh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-acc')"><span class="material-icons-round">close</span></button>
+      <span class="dt">Accent Colour</span>
+    </div>
+    <div class="db" id="acc-body"></div>
+  </div>
+</div>
+
+<!-- Print Preview -->
+<div class="bd ful" id="dlg-prev">
+  <div class="sh fh" style="display:flex;flex-direction:column">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-prev')"><span class="material-icons-round">close</span></button>
+      <span class="dt">Preview <span id="prev-page-count" style="font-size:12px;font-weight:400;color:var(--t2)"></span></span>
+      <div style="display:flex;gap:6px">
+        <button class="ib" onclick="togglePDFDarkMode()" title="Toggle dark PDF"><span class="material-icons-round">dark_mode</span></button>
+        <button class="btn bo btn-sm" onclick="printQuote()"><span class="material-icons-round">print</span></button>
+        <button class="btn bp btn-sm" onclick="doPDF()"><span class="material-icons-round">download</span> PDF</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="prev-outer" id="prev-outer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Revision History / Activity Log -->
+<div class="bd ful" id="dlg-rev">
+  <div class="sh fh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-rev')"><span class="material-icons-round">close</span></button>
+      <span class="dt">History</span>
+    </div>
+    <div id="rev-body"></div>
+  </div>
+</div>
+
+<!-- Templates -->
+<div class="bd ful" id="dlg-tpl">
+  <div class="sh fh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-tpl')"><span class="material-icons-round">close</span></button>
+      <span class="dt">Templates</span>
+    </div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px" id="tpl-body"></div>
+  </div>
+</div>
+
+<!-- Analytics -->
+<div class="bd ful" id="dlg-analytics">
+  <div class="sh fh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-analytics')"><span class="material-icons-round">close</span></button>
+      <span class="dt">Sales Analytics</span>
+    </div>
+    <div id="analytics-body" style="padding-bottom:24px"></div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="bd ctr" id="dlg-cfm">
+  <div class="sh" style="border-radius:16px;max-width:340px">
+    <div class="dh"><span class="dt" id="cfm-ttl">Confirm</span></div>
+    <div style="padding:4px 16px 14px;font-size:14px;color:var(--t2);line-height:1.5" id="cfm-msg"></div>
+    <div style="padding:0 16px 16px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn bt" onclick="closeDlg('dlg-cfm')">Cancel</button>
+      <button class="btn bd2" id="cfm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- More Menu -->
+<div class="bd" id="dlg-more">
+  <div class="sh">
+    <div id="more-body"></div>
+    <div class="sp-s"></div>
+  </div>
+</div>
+
+<!-- Share -->
+<div class="bd" id="dlg-share">
+  <div class="sh">
+    <div class="dh">
+      <button class="ib" onclick="closeDlg('dlg-share')"><span class="material-icons-round">close</span></button>
+      <span class="dt">Share Quote</span>
+    </div>
+    <div style="padding:8px 16px 0;font-size:13px;color:var(--t2)" id="share-quote-label">—</div>
+    <div id="share-body" style="padding:8px 0"></div>
+    <div style="padding:10px 16px 16px">
+      <button class="btn bp btn-w" onclick="doGeneratePDFAndShare()">
+        <span class="material-icons-round">picture_as_pdf</span> Generate &amp; Share PDF
+      </button>
+    </div>
+    <div id="share-progress" style="display:none;padding:0 16px 16px;text-align:center">
+      <div style="width:32px;height:32px;border-radius:50%;border:3px solid var(--ol);border-top-color:var(--P);animation:spin .8s linear infinite;margin:0 auto 10px"></div>
+      <div style="font-size:13px;color:var(--t2)" id="share-progress-msg">Generating…</div>
+    </div>
+    <div class="sp-s"></div>
+  </div>
+</div>
+
+<!-- Custom Select Sheet -->
+<div id="cs-sheet" onclick="csClose()">
+  <div id="cs-inner" onclick="event.stopPropagation()">
+    <div id="cs-header">
+      <span id="cs-title">Select</span>
+      <button class="ib" onclick="csClose()"><span class="material-icons-round">close</span></button>
+    </div>
+    <div id="cs-search-wrap" style="display:none">
+      <input id="cs-search" placeholder="Search…" autocomplete="off" oninput="csFilter(this.value)">
+    </div>
+    <div id="cs-list"></div>
+  </div>
+</div>
+
+<!-- Hidden PDF render target -->
 <div id="prev-doc" style="position:fixed;top:-99999px;left:-99999px;width:760px;visibility:hidden;pointer-events:none;background:#fff;color:#111;padding:36px 40px 44px;box-sizing:border-box;font-family:'Inter',ui-sans-serif,-apple-system,sans-serif;-webkit-font-smoothing:antialiased"></div>
 
 <script>
-// Live totals bar visibility toggle
-document.addEventListener('DOMContentLoaded',()=>{
-  const patch=(fn,before,after)=>{const orig=window[fn];window[fn]=function(){before&&before();orig&&orig.apply(this,arguments);after&&after();};};
-  ['qeNext','qeBack'].forEach(fn=>patch(fn,null,()=>{
-    const wrap=document.getElementById('qe-live-wrap');
-    if(wrap)wrap.style.display=window.qeStep===2?'flex':'none';
-  }));
+// Live totals bar — show only on step 2 of quote editor
+document.addEventListener('DOMContentLoaded', () => {
+  const wrap = () => document.getElementById('qe-live-wrap');
+  const upd  = () => { const w = wrap(); if (w) w.style.display = window.qeStep === 2 ? 'flex' : 'none'; };
+  ['qeNext','qeBack'].forEach(fn => {
+    const orig = window[fn];
+    window[fn] = function() { orig && orig.apply(this, arguments); upd(); };
+  });
 });
 </script>
 <script src="app.js"></script>
