@@ -2100,53 +2100,43 @@ function expandBundleIntoItems(bundleId){
   return (b.items||[]).map(bi=>{const p=getProd(bi.itemId);return{itemId:bi.itemId,desc:p?.name||bi.itemId,qty:bi.qty||1,unitPrice:p?p.unitCost*(1+p.markup):0,discount:0};});
 }
 
-// ── SIGNATURE PAD (CANVAS DRAW) ──────────────────────────
-function openSignaturePad(spId){
-  document.getElementById('set-ttl').textContent='Draw Signature';
-  document.getElementById('set-body').innerHTML=`
-    <div style="font-size:13px;color:var(--t2);margin-bottom:10px">Draw your signature with your finger or mouse.</div>
-    <div style="border:2px solid var(--ol);border-radius:8px;overflow:hidden;background:#fff;touch-action:none">
-      <canvas id="sig-canvas" width="340" height="160" style="display:block;width:100%;cursor:crosshair"></canvas>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn bo" onclick="clearSigPad()"><span class="material-icons-round">clear</span> Clear</button>
-      <button class="btn bp" style="flex:1" onclick="saveSigPad('${spId}')"><span class="material-icons-round">check</span> Save Signature</button>
-    </div>`;
-  openDlg('dlg-set');pushNav('sigpad-'+spId);
-  setTimeout(initSigPad,100);
-}
-function initSigPad(){
-  const canvas=document.getElementById('sig-canvas');if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  ctx.strokeStyle='#111';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
-  let drawing=false,lastX=0,lastY=0;
-  function getPos(e){const r=canvas.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(canvas.width/r.width),y:(t.clientY-r.top)*(canvas.height/r.height)};}
-  canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);lastX=p.x;lastY=p.y;});
-  canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);lastX=p.x;lastY=p.y;},{passive:false});
-  function draw(e){if(!drawing)return;e.preventDefault?.();const p=getPos(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.stroke();lastX=p.x;lastY=p.y;}
-  canvas.addEventListener('mousemove',draw);canvas.addEventListener('touchmove',draw,{passive:false});
-  canvas.addEventListener('mouseup',()=>drawing=false);canvas.addEventListener('touchend',()=>drawing=false);
-}
-function clearSigPad(){const c=document.getElementById('sig-canvas');if(c)c.getContext('2d').clearRect(0,0,c.width,c.height);}
-function saveSigPad(spId){
-  const c=document.getElementById('sig-canvas');if(!c)return;
-  const dataUrl=c.toDataURL('image/png');
-  const sp=getSP(spId);if(sp){sp.signatureImg=dataUrl;save();snack('Signature saved');}
-  closeDlg('dlg-set');
-}
-
 // ── CUSTOM QUOTE FIELDS ──────────────────────────────────
 function openCustomFieldsManager(){
-  const fields=DB.settings.customQuoteFields||[];
-  document.getElementById('set-ttl').textContent='Custom Quote Fields';
-  document.getElementById('set-body').innerHTML=`
-    <div style="font-size:13px;color:var(--t2);margin-bottom:12px">These fields appear in the quote editor and on the PDF.</div>
-    <div id="cqf-list">${fields.map((f,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center"><input class="fi" style="flex:1" id="cqf-${i}" value="${esc(f)}" placeholder="Field name (e.g. PO Number)"><button class="ib" style="color:var(--E);flex-shrink:0" onclick="this.closest('div').remove()"><span class="material-icons-round">delete</span></button></div>`).join('')}</div>
-    <button class="btn btn-ton btn-w" style="margin-bottom:10px" onclick="addCQFItem()"><span class="material-icons-round">add</span> Add Field</button>
-    <button class="btn bp btn-w" onclick="saveCQF()">Save Fields</button>`;
-  openDlg('dlg-set');pushNav('customfields');
+  const fields = DB.settings.customQuoteFields || [];
+  document.getElementById('set-ttl').textContent = 'Custom Quote Fields';
+  document.getElementById('set-body').innerHTML = `
+    <div style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.6">
+      Add custom fields to your quotes (e.g. PO Number, Delivery Date, Project Code).
+      They appear in the quote editor and are printed on the PDF.
+    </div>
+    <div id="cqf-list">${fields.map(f => cqfRowHTML(f)).join('')}</div>
+    <button class="btn btn-ton btn-w" style="margin-bottom:12px" onclick="addCQFItem()">
+      <span class="material-icons-round">add</span> Add Field
+    </button>
+    <button class="btn bp btn-w" onclick="saveCQF()">
+      <span class="material-icons-round">save</span> Save Fields
+    </button>`;
+  openDlg('dlg-set');
+  pushNav('customfields');
 }
-function addCQFItem(){const list=document.getElementById('cqf-list');const idx=list.querySelectorAll('div').length;const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:center';row.innerHTML=`<input class="fi" style="flex:1" id="cqf-${idx}" placeholder="Field name (e.g. PO Number)"><button class="ib" style="color:var(--E);flex-shrink:0" onclick="this.closest('div').remove()"><span class="material-icons-round">delete</span></button>`;list.appendChild(row);}
+function cqfRowHTML(value) {
+  return `<div class="cqf-row" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+    <input class="fi cqf-input" style="flex:1" value="${esc(value)}" placeholder="e.g. PO Number, Project Code…">
+    <button class="ib" style="color:var(--E);flex-shrink:0" onclick="this.closest('.cqf-row').remove()">
+      <span class="material-icons-round">delete</span>
+    </button>
+  </div>`;
+}
+function addCQFItem() {
+  const list = document.getElementById('cqf-list');
+  if (!list) return;
+  const div = document.createElement('div');
+  div.innerHTML = cqfRowHTML('');
+  list.appendChild(div.firstElementChild);
+  // Focus the new input
+  const inputs = list.querySelectorAll('.cqf-input');
+  inputs[inputs.length - 1]?.focus();
+}
 function saveCQF(){const inputs=document.querySelectorAll('[id^="cqf-"]');DB.settings.customQuoteFields=Array.from(inputs).map(el=>el.value.trim()).filter(Boolean);save();closeDlg('dlg-set');renderSettings();snack('Custom fields saved');}
 
 // ── RICH TEXT NOTES ──────────────────────────────────────
@@ -2578,19 +2568,7 @@ function saveRecurring(qid) {
   save(); closeDlg('dlg-set'); snack('✓ Recurring settings saved'); hap(15);
 }
 
-// ── FIXED: saveSigPad — checks canvas is not blank ──
-function saveSigPad(spId) {
-  const c = document.getElementById('sig-canvas'); if (!c) return;
-  // Check not blank
-  const ctx = c.getContext('2d');
-  const data = ctx.getImageData(0, 0, c.width, c.height).data;
-  const hasContent = data.some((v, i) => i % 4 === 3 && v > 0);
-  if (!hasContent) { snack('Please draw your signature first'); return; }
-  const dataUrl = c.toDataURL('image/png');
-  const sp = getSP(spId);
-  if (sp) { sp.signatureImg = dataUrl; save(); snack('✓ Signature saved'); hap(20); }
-  closeDlg('dlg-set');
-}
+
 
 // ── FIXED: saveBundle — full validation ──
 function saveBundle(id) {
@@ -2612,10 +2590,20 @@ function saveBundle(id) {
 
 // ── FIXED: saveCQF — deduplicates and trims ──
 function saveCQF() {
-  const inputs = document.querySelectorAll('[id^="cqf-"]');
-  const fields = [...new Set(Array.from(inputs).map(el => el.value.trim()).filter(Boolean))];
+  const inputs = document.querySelectorAll('#cqf-list .cqf-input');
+  if (!inputs.length) {
+    // No inputs found at all — list might be empty intentionally
+    DB.settings.customQuoteFields = [];
+    save(); closeDlg('dlg-set'); renderSettings(); snack('✓ Custom fields cleared'); hap(15);
+    return;
+  }
+  const fields = [...new Set(
+    Array.from(inputs).map(el => el.value.trim()).filter(Boolean)
+  )];
   DB.settings.customQuoteFields = fields;
-  save(); closeDlg('dlg-set'); renderSettings(); snack('✓ Custom fields saved'); hap(15);
+  save(); closeDlg('dlg-set'); renderSettings();
+  snack('✓ ' + (fields.length ? fields.length + ' custom field(s) saved' : 'Custom fields cleared'));
+  hap(15);
 }
 
 // ── FIXED: saveRichNotes — strips dangerous tags ──
@@ -2718,11 +2706,16 @@ window.renderQE0 = function(body) {
   const fields = DB.settings.customQuoteFields || [];
   if (!fields.length) return;
   const existing = qeD.customFields || {};
-  const extra = document.createElement('div');
-  extra.innerHTML = `<div style="height:1px;background:var(--ol2);margin:4px 0 12px"></div>
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Custom Fields</div>
-    ${fields.map(f => `<div class="fg"><label class="fl">${esc(f)}</label><input class="fi" id="cqf-val-${esc(f).replace(/\s/g,'_')}" value="${esc(existing[f] || '')}" placeholder="${esc(f)}"></div>`).join('')}`;
-  body.appendChild(extra);
+  const wrap = document.createElement('div');
+  let html = '<div style="height:1px;background:var(--ol2);margin:4px 0 14px"></div>';
+  html += '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Custom Fields</div>';
+  fields.forEach(function(f) {
+    const safeId = 'cqf-val-' + f.replace(/[^a-zA-Z0-9]/g, '_');
+    html += '<div class="fg"><label class="fl">' + esc(f) + '</label>';
+    html += '<input class="fi" id="' + safeId + '" data-field="' + esc(f) + '" value="' + esc(existing[f] || '') + '" placeholder="' + esc(f) + '"></div>';
+  });
+  wrap.innerHTML = html;
+  body.appendChild(wrap);
 };
 
 // Patch collectQE to also collect custom field values
@@ -2745,19 +2738,20 @@ window.collectQE = function(step) {
 const _origOpenQD = window.openQD;
 window.openQD = function(qid) {
   _origOpenQD(qid);
-  const q = DB.quotes.find(x => x.id === qid);
-  if (q && q.customFields && Object.keys(q.customFields).length) {
-    const body = document.getElementById('qd-body');
-    if (!body) return;
-    const block = `<div class="db2" style="margin-top:0">
-      <div class="dh2"><span class="dht">Custom Fields</span></div>
-      ${Object.entries(q.customFields).filter(([,v]) => v).map(([k, val]) =>
-        `<div class="dr"><span class="dk">${esc(k)}</span><span class="dv">${esc(val)}</span></div>`
-      ).join('')}
-    </div>`;
-    // Insert after first .db2
-    const firstBlock = body.querySelector('.db2');
-    if (firstBlock) firstBlock.insertAdjacentHTML('afterend', block);
+  const _qdQ = DB.quotes.find(x => x.id === qid);
+  if (_qdQ && _qdQ.customFields) {
+    const nonEmpty = Object.entries(_qdQ.customFields).filter(([,v]) => v && v.trim());
+    if (nonEmpty.length) {
+      const body = document.getElementById('qd-body');
+      if (body) {
+        const rows = nonEmpty.map(([k,val]) =>
+          '<div class="dr"><span class="dk">' + esc(k) + '</span><span class="dv">' + esc(val) + '</span></div>'
+        ).join('');
+        const block = '<div class="db2" style="margin-top:0"><div class="dh2"><span class="dht">Custom Fields</span></div>' + rows + '</div>';
+        const firstBlock = body.querySelector('.db2');
+        if (firstBlock) firstBlock.insertAdjacentHTML('afterend', block);
+      }
+    }
   }
 };
 
@@ -3862,9 +3856,7 @@ function openSpEd(id) {
         <button class="btn bo btn-sm" onclick="document.getElementById('sp-sig-file').click()">
           <span class="material-icons-round">upload</span> Upload Image
         </button>
-        <button class="btn btn-ton btn-sm" onclick="openSignaturePad('${id || ''}')">
-          <span class="material-icons-round">draw</span> Draw Signature
-        </button>
+
         ${sp?.signatureImg ? `<button class="btn bt btn-sm" style="color:var(--E)" onclick="clearSpSig()">
           <span class="material-icons-round">delete</span> Remove
         </button>` : ''}
@@ -4206,13 +4198,12 @@ function collectQE(step) {
     qeD.taxable      = togOn('qe-tax');
     qeD.revision     = fv('qe-rev');
     qeD.currency     = fv('qe-curr')  || sym();
-    // Custom fields
-    const fields = DB.settings.customQuoteFields || [];
-    if (fields.length) {
+    // Custom fields — read by data-field attribute (bulletproof regardless of name)
+    {
       if (!qeD.customFields) qeD.customFields = {};
-      fields.forEach(f => {
-        const el = document.getElementById('cqf-val-' + f.replace(/\s/g, '_'));
-        if (el) qeD.customFields[f] = el.value;
+      document.querySelectorAll('[data-field]').forEach(el => {
+        const fieldName = el.dataset.field;
+        if (fieldName) qeD.customFields[fieldName] = el.value || '';
       });
     }
   }
@@ -4431,37 +4422,7 @@ window.closeColorPicker = function() {
 // cpConfirm already calls closeColorPicker then callback — that's fine
 
 // ── SIGNATURE PAD — fix: open INSIDE dlg-set correctly ───
-window.openSignaturePad = function(spId) {
-  document.getElementById('set-ttl').textContent = 'Draw Signature';
-  document.getElementById('set-body').innerHTML = `
-    <div style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.6">
-      Draw your signature using your finger or mouse. Use clear strokes on the white area.
-    </div>
-    <div style="border:2px solid var(--ol);border-radius:10px;overflow:hidden;background:#fff;touch-action:none;position:relative">
-      <canvas id="sig-canvas" width="340" height="180"
-        style="display:block;width:100%;cursor:crosshair;background:#fff"></canvas>
-      <div style="position:absolute;top:8px;right:8px;font-size:10px;color:#ccc;pointer-events:none">Sign here</div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn bo" style="flex:1" onclick="clearSigPad()">
-        <span class="material-icons-round">clear</span> Clear
-      </button>
-      <button class="btn bp" style="flex:1" onclick="saveSigPad('${spId || ''}')">
-        <span class="material-icons-round">check</span> Save Signature
-      </button>
-    </div>
-    <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:10px">
-      PNG with transparent background works best for upload
-    </div>`;
 
-  // Open dlg-set if not already open
-  if (!document.getElementById('dlg-set').classList.contains('open')) {
-    openDlg('dlg-set');
-  }
-
-  setTimeout(initSigPad, 120);
-  pushNav('sigpad-' + (spId || 'new'));
-};
 
 // ── INIT NAV ──────────────────────────────────────────────
 function initNav() {
@@ -4572,45 +4533,7 @@ document.querySelectorAll('.nv').forEach(btn => {
   btn.setAttribute('onclick', `closeAllDlgs();${orig}`);
 });
 
-// ── FIX: saveSigPad — check canvas not blank ─────────────
-window.saveSigPad = function(spId) {
-  const c = document.getElementById('sig-canvas');
-  if (!c) { snack('Signature canvas not found'); return; }
 
-  const ctx = c.getContext('2d');
-  const data = ctx.getImageData(0, 0, c.width, c.height).data;
-  const hasContent = Array.from(data).some((v, i) => i % 4 === 3 && v > 0);
-  if (!hasContent) { showErr('Please draw your signature first'); return; }
-
-  const dataUrl = c.toDataURL('image/png');
-
-  // Save to the salesperson if an ID was passed
-  if (spId) {
-    const sp = getSP(spId);
-    if (sp) {
-      sp.signatureImg = dataUrl;
-      save();
-      snack('✓ Signature saved to ' + sp.name);
-    } else {
-      // Might be saving a new SP not yet in DB — store in hidden field
-      const hidEl = document.getElementById('sp-sig-img');
-      if (hidEl) hidEl.value = dataUrl;
-      const prev = document.getElementById('sp-sig-preview');
-      if (prev) prev.innerHTML = `<img src="${dataUrl}" style="max-height:70px;max-width:240px;object-fit:contain">`;
-      snack('✓ Signature ready — save the salesperson to apply it');
-    }
-  } else {
-    // No ID — just update the form field in the currently open SP editor
-    const hidEl = document.getElementById('sp-sig-img');
-    if (hidEl) hidEl.value = dataUrl;
-    const prev = document.getElementById('sp-sig-preview');
-    if (prev) prev.innerHTML = `<img src="${dataUrl}" style="max-height:70px;max-width:240px;object-fit:contain">`;
-    snack('✓ Signature ready — tap Save to apply');
-  }
-
-  closeDlg('dlg-set');
-  hap(20);
-};
 
 // ── FIX: previewSpSig — update the correct preview element ──
 window.previewSpSig = function(input) {
