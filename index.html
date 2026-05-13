@@ -511,11 +511,323 @@ textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
 [id^="cp-swatch-"]:active { transform: scale(.88); }
 
 /* ── RESPONSIVE ──────────────────────────────────────── */
+
+/* ── TABLET (600px+) ─────────────────────────────────── */
 @media (min-width: 600px) {
   .met { grid-template-columns: repeat(4, 1fr); }
-  .bd:not(.ful):not(.ctr) .sh { max-width: 520px; margin: auto; border-radius: 16px; }
+  .bd:not(.ful):not(.ctr) .sh { max-width: 540px; margin: auto; border-radius: 16px; }
   .bd:not(.ful):not(.ctr) { align-items: center; }
 }
+
+/* ── DESKTOP (900px+) ────────────────────────────────── */
+@media (min-width: 900px) {
+  /* Two-column app shell: sidebar + content */
+  #app {
+    flex-direction: row;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: 100dvh;
+    box-shadow: 0 0 0 1px var(--ol);
+  }
+
+  /* Hide mobile topbar on desktop */
+  #topbar { display: none; }
+
+  /* Sidebar nav replaces bottom nav */
+  #nav {
+    width: 220px;
+    height: 100dvh;
+    flex-direction: column;
+    border-top: none;
+    border-right: 1px solid var(--ol);
+    padding-bottom: 0;
+    padding-top: 0;
+    flex-shrink: 0;
+    overflow-y: auto;
+    justify-content: flex-start;
+    order: -1;
+  }
+
+  /* Sidebar header branding */
+  #nav::before {
+    content: 'Quotes';
+    display: block;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--P);
+    padding: 24px 20px 20px;
+    letter-spacing: -.4px;
+    border-bottom: 1px solid var(--ol2);
+    flex-shrink: 0;
+  }
+
+  /* Sidebar nav items — horizontal pill layout */
+  .nv {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    height: 46px;
+    border-radius: 10px;
+    margin: 3px 8px;
+    color: var(--t2);
+    width: calc(100% - 16px);
+    flex: none;
+  }
+  .nv.on { background: var(--PC); color: var(--P); }
+  .nv:not(.on):hover { background: var(--su2); color: var(--t1); }
+  .nv-ind {
+    width: 22px; height: 22px;
+    background: transparent !important;
+    border-radius: 0;
+  }
+  .nv.on .nv-ind { background: transparent !important; }
+  .nv .material-icons-round { font-size: 20px; }
+  .nv-lbl { font-size: 14px; font-weight: 600; }
+  .nav-badge { top: 50%; transform: translateY(-50%); right: 8px; }
+
+  /* Sidebar footer spacer */
+  #nav::after {
+    content: '';
+    flex: 1;
+    display: block;
+  }
+
+  /* Content area */
+  #content {
+    flex: 1;
+    padding-bottom: 0;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  /* FAB repositioned on desktop */
+  #fab {
+    right: 24px;
+    bottom: 24px;
+  }
+
+  /* Snackbar above content */
+  #snack {
+    left: 240px;
+    right: 24px;
+    bottom: 24px;
+  }
+
+  /* Offline dot adjust */
+  #offline-dot { right: 16px; top: 16px; }
+
+  /* Pages get a max-width container and padding */
+  .page.on {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 8px 0 40px;
+    width: 100%;
+  }
+
+  /* Metrics — always 4 columns on desktop */
+  .met { grid-template-columns: repeat(4, 1fr); }
+
+  /* Cards and list items get more padding */
+  .db2 { margin: 8px 20px; }
+  .tots { margin: 8px 20px; }
+  .st { padding: 14px 20px 6px; }
+  .met { padding: 12px 20px; }
+
+  /* Full-screen dialogs become centered modals */
+  .bd.ful { align-items: center; justify-content: center; }
+  .bd.ful .sh.fh {
+    border-radius: 16px;
+    height: auto;
+    max-height: 90dvh;
+    width: 680px;
+    max-width: calc(100vw - 48px);
+    animation: none;
+    box-shadow: 0 8px 40px rgba(0,0,0,.28);
+  }
+  /* Bottom sheets also become centered */
+  .bd:not(.ctr) { align-items: center; justify-content: center; }
+  .bd:not(.ctr) .sh:not(.fh) {
+    border-radius: 16px;
+    max-width: 560px;
+    width: 100%;
+    animation: none;
+    box-shadow: 0 8px 40px rgba(0,0,0,.28);
+  }
+  /* Custom select becomes centered */
+  #cs-inner {
+    border-radius: 16px;
+    max-height: 60dvh;
+    animation: none;
+  }
+  #cs-sheet.open {
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Quote editor — two-column step layout on wide screens */
+  #qe-body { padding: 20px 24px; }
+
+  /* Live totals bar */
+  #qe-live-wrap { padding: 10px 24px; }
+  #qd-actions-wrap { padding: 12px 24px; }
+
+  /* Dashboard quick actions row */
+  #d-quick-actions { padding: 4px 20px 0; }
+
+  /* Alert cards */
+  #d-alerts { padding: 0 20px; }
+  .alert-card { border-radius: 10px; }
+
+  /* Chart */
+  .chart-wrap { margin: 0 20px; }
+
+  /* Filters */
+  .fbar { padding: 10px 20px; }
+  .sb   { margin: 10px 20px 4px; }
+
+  /* Lists */
+  #q-list, #inv-list, #cust-list, #sp-list, #d-rec { padding-left: 20px; padding-right: 20px; }
+
+  /* Bulk bar */
+  #bulk-bar { padding: 10px 20px; }
+
+  /* Settings page — two-column layout for card rows */
+  #page-settings .card { margin-left: 20px; margin-right: 20px; }
+
+  /* Confirmation dialog */
+  .bd.ctr .sh { width: 400px; max-width: calc(100vw - 48px); animation: none; }
+
+  /* Preview dialog wider */
+  #dlg-prev .sh.fh { width: 860px; }
+
+  /* Analytics */
+  #analytics-body .met { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── WIDE DESKTOP (1200px+) ──────────────────────────── */
+@media (min-width: 1200px) {
+  #app { max-width: 1400px; }
+  #nav { width: 240px; }
+  .bd.ful .sh.fh { width: 760px; }
+  .page.on { max-width: 960px; }
+  #snack { left: 260px; }
+}
+
+
+/* ── DESKTOP POLISH ─────────────────────────────────── */
+@media (min-width: 900px) {
+
+  /* Body background — show nice grey outside the app card */
+  body { background: #E8EAED; }
+  [data-theme=dark] body { background: #000; }
+
+  /* App card shadow */
+  #app {
+    border-radius: 0;
+    min-height: 100dvh;
+  }
+
+  /* Topbar search button still works on desktop via sidebar more menu */
+
+  /* Sidebar brand area */
+  #nav::before {
+    font-family: 'Inter', ui-sans-serif, sans-serif;
+  }
+
+  /* Sidebar active item glow */
+  .nv.on {
+    background: var(--PC);
+    color: var(--P);
+  }
+
+  /* Content scrollbar visible on desktop */
+  #content::-webkit-scrollbar { width: 6px; }
+  #content::-webkit-scrollbar-track { background: transparent; }
+  #content::-webkit-scrollbar-thumb { background: var(--ol); border-radius: 3px; }
+
+  /* Page headers bigger on desktop */
+  .page.on > div:first-child { padding-top: 24px !important; }
+
+  /* Quote list card hover */
+  .qi:hover { box-shadow: var(--sh2); transform: translateY(-1px); }
+  .ii:hover  { box-shadow: var(--sh2); }
+
+  /* Settings page two-col layout for cards */
+  #page-settings .card .si { padding: 14px 20px; }
+
+  /* Dashboard metrics card hover */
+  .mc:hover { box-shadow: var(--sh2); transform: translateY(-1px); transition: all .15s; }
+
+  /* Pipeline bars wider */
+  #d-pipe { padding: 0 20px 12px; }
+
+  /* Forms inside dialogs get more padding */
+  .bd .db { padding: 20px 24px; }
+
+  /* Bottom sheet dialog header */
+  .bd .dh { padding: 16px 20px; }
+
+  /* QE steps padding */
+  .steps { padding: 10px 24px; }
+
+  /* Wider date filter row */
+  #page-quotes > div:nth-child(4) { padding: 8px 20px 0; }
+
+  /* Hide mobile-only search toggle — use sidebar more button instead */
+  #btn-srch { display: flex !important; }
+
+  /* Fbar on desktop */
+  .fbar { padding: 10px 20px; gap: 10px; }
+  .fc { padding: 7px 18px; }
+
+  /* Onboarding card */
+  #d-onboarding { padding: 0 20px 10px; }
+
+  /* Alert cards */
+  #d-alerts { gap: 10px; }
+
+  /* Revenue chart */
+  .chart-bars { height: 100px; }
+
+  /* Quick actions */
+  #d-quick-actions > div { padding: 10px 20px 0; }
+
+  /* Custom select on desktop — larger, more comfortable */
+  #cs-inner { max-width: 480px; width: 100%; margin: 0 auto; }
+
+  /* Colour picker overlay */
+  #color-picker-overlay #color-picker-panel {
+    border-radius: 16px;
+    max-width: 420px;
+    width: 100%;
+    margin: 0;
+  }
+  #color-picker-overlay {
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Win animation full coverage */
+  #win-anim { z-index: 10001; }
+
+  /* Revision history items */
+  .rev-item { padding: 14px 20px; }
+
+  /* Template cards */
+  .tpl-card { padding: 16px 20px; }
+
+  /* Salesperson cards */
+  .spc { padding: 14px 20px; }
+
+  /* Empty states */
+  .empty { padding: 64px 32px; }
+
+  /* Dialog close buttons */
+  .dh .ib { width: 36px; height: 36px; }
+}
+
 </style>
 </head>
 <body>
@@ -630,7 +942,7 @@ textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
       <button class="fc" onclick="setQF('Expired')">Expired</button>
       <button class="fc" onclick="setQF('Pending Approval')">Pending</button>
     </div>
-    <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px" id="q-list"></div>
+    <div id="q-list" style="display:flex;flex-direction:column;gap:8px;padding:0 16px"></div>
   </div>
 
   <!-- INVENTORY -->
@@ -645,7 +957,7 @@ textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
     </div>
     <div class="sb"><span class="material-icons-round">search</span><input id="inv-srch" placeholder="Search products…" autocomplete="off" oninput="renderInv()"></div>
     <div class="fbar" id="inv-fbar"></div>
-    <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px" id="inv-list"></div>
+    <div id="inv-list" style="display:flex;flex-direction:column;gap:8px;padding:0 16px"></div>
   </div>
 
   <!-- CUSTOMERS -->
@@ -659,7 +971,7 @@ textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
     </div>
     <div class="sb"><span class="material-icons-round">search</span><input id="cust-srch" placeholder="Search customers…" autocomplete="off" oninput="renderCusts()"></div>
     <div class="fbar" id="cust-ind-fbar"></div>
-    <div style="padding:8px 16px;display:flex;flex-direction:column;gap:8px" id="cust-list"></div>
+    <div id="cust-list" style="display:flex;flex-direction:column;gap:8px;padding:8px 16px"></div>
   </div>
 
   <!-- SETTINGS -->
@@ -740,7 +1052,7 @@ textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
 
 </div><!-- /content -->
 
-<!-- BOTTOM NAV -->
+<!-- NAV: bottom on mobile, sidebar on desktop -->
 <div id="nav">
   <button class="nv on" data-p="dashboard" onclick="go('dashboard')">
     <div class="nv-ind"><span class="material-icons-round">dashboard</span></div>
@@ -765,6 +1077,15 @@ textarea.fi { resize: vertical; min-height: 74px; line-height: 1.5; }
     <div class="nv-ind"><span class="material-icons-round">settings</span></div>
     <span class="nv-lbl">Settings</span>
   </button>
+  <!-- Desktop-only bottom actions in sidebar -->
+  <div id="nav-desktop-footer" style="display:none">
+    <div style="height:1px;background:var(--ol2);margin:8px 0"></div>
+    <button class="nv" onclick="openMore()" style="margin:3px 8px;width:calc(100% - 16px);flex:none;height:46px;border-radius:10px">
+      <div class="nv-ind" style="background:transparent!important"><span class="material-icons-round">more_horiz</span></div>
+      <span class="nv-lbl">More</span>
+    </button>
+    <div id="nav-company-chip" style="padding:12px 16px 8px;font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px"></div>
+  </div>
 </div>
 </div><!-- /app -->
 
@@ -1034,6 +1355,55 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
+<script>
+// ── DESKTOP LAYOUT HELPERS ──────────────────────────────
+function isDesktop() { return window.innerWidth >= 900; }
+
+function applyDesktopLayout() {
+  const desktop = isDesktop();
+  const footer = document.getElementById('nav-desktop-footer');
+  const topbar = document.getElementById('topbar');
+  if (footer) footer.style.display = desktop ? 'block' : 'none';
+  // Update company chip in sidebar
+  if (desktop) {
+    const chip = document.getElementById('nav-company-chip');
+    const co = typeof activeCo === 'function' ? activeCo() : null;
+    if (chip && co) chip.textContent = co.name;
+  }
+}
+
+// Run on load and resize
+window.addEventListener('resize', applyDesktopLayout);
+document.addEventListener('DOMContentLoaded', () => {
+  applyDesktopLayout();
+  // Re-run after app init (activeCo may not be ready yet)
+  setTimeout(applyDesktopLayout, 800);
+});
+
+// Patch renderDash to update sidebar company chip
+const _origRD_desktop = window.renderDash;
+if (_origRD_desktop) {
+  window.renderDash = function() {
+    _origRD_desktop.apply(this, arguments);
+    applyDesktopLayout();
+  };
+}
+
+
+// Live totals bar — also toggle on step change
+document.addEventListener('DOMContentLoaded', () => {
+  const upd = () => {
+    const w = document.getElementById('qe-live-wrap');
+    if (w) w.style.display = (window.qeStep === 2) ? 'flex' : 'none';
+  };
+  ['qeNext','qeBack'].forEach(fn => {
+    const orig = window[fn];
+    if (orig) window[fn] = function() { orig.apply(this, arguments); upd(); };
+  });
+});
+</script>
+
 <script src="app.js"></script>
 </body>
 </html>
